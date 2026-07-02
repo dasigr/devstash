@@ -424,6 +424,8 @@ Refer to the screenshots below as a base for the Dashboard UI. It does not have 
 
 - @context/screenshots/dashboard-ui-main.png
 - @contact/screenshots/dashboard-ui-drawer.png
+- @contact/screenshots/dashboard-ui-drawer-image.png
+- @contact/screenshots/dashboard-ui-sidebar-collapsed.png
 
 ### Layout
 
