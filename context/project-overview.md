@@ -418,11 +418,18 @@ Freemium model. **During development, all users can access everything** — but 
 - Syntax highlighting for code blocks
 - **References:** [Notion](https://notion.so), [Linear](https://linear.app), [Raycast](https://raycast.com)
 
+### Screenshots
+
+Refer to the screenshots below as a base for the Dashboard UI. It does not have to be exact. Use it as a reference:
+
+- @context/screenshots/dashboard-ui-main.png
+- @contact/screenshots/dashboard-ui-drawer.png
+
 ### Layout
 
 - **Sidebar + main content**, collapsible sidebar
-- **Sidebar:** item types with links to their items (Snippets, Commands, etc.) + latest collections
-- **Main:** grid of color-coded collection cards (background color reflects the item type each collection holds most). Items appear under collections as color-coded cards (border color reflects item type).
+- **Sidebar:** item types with links to their items (Snippets, Commands, etc.) + latest collections. User avatar and name at the bottom.
+- **Main:** display 3 sections (Collections, Pinned Items, and Recent Items). Grid of color-coded collection cards (background color reflects the item type each collection holds most). Only display the Item Types (as Icon) of Items that belongs the Collection. The Items in the Pinned and Recent Items section should appear as color-coded cards (left border color reflects item type). New Item button at the top right.
 - **Individual items** open in a quick-access drawer
 
 ### Responsive
