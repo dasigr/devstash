@@ -1,0 +1,179 @@
+// Prisma 7 schema — see prisma.config.ts for datasource url & migrations config.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum ContentType {
+  TEXT
+  FILE
+  URL
+}
+
+// ---------------------------------------------------------------------------
+// NextAuth (Auth.js) models — required by @auth/prisma-adapter.
+// ---------------------------------------------------------------------------
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@id([identifier, token])
+}
+
+// ---------------------------------------------------------------------------
+// DevStash domain models
+// ---------------------------------------------------------------------------
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+
+  // Billing
+  isPro                Boolean @default(false)
+  stripeCustomerId     String? @unique
+  stripeSubscriptionId String? @unique
+
+  // Relations
+  accounts    Account[]
+  sessions    Session[]
+  items       Item[]
+  collections Collection[]
+  itemTypes   ItemType[] // custom types only
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Item {
+  id          String      @id @default(cuid())
+  title       String
+  contentType ContentType @default(TEXT)
+
+  // text types
+  content  String? // null when file-based
+  language String? // optional, for code
+
+  // file types (Pro)
+  fileUrl  String? // Cloudflare R2 URL
+  fileName String? // original filename
+  fileSize Int? // bytes
+
+  // link type
+  url String?
+
+  description String?
+  isFavorite  Boolean @default(false)
+  isPinned    Boolean @default(false)
+
+  // Relations
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+  itemType    ItemType         @relation(fields: [itemTypeId], references: [id])
+  itemTypeId  String
+  tags        Tag[] // implicit many-to-many
+  collections ItemCollection[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([itemTypeId])
+}
+
+model ItemType {
+  id       String  @id @default(cuid())
+  name     String
+  icon     String
+  color    String
+  isSystem Boolean @default(false)
+
+  // null for system types; set for user-created custom types
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String?
+
+  items                 Item[]
+  defaultForCollections Collection[] @relation("CollectionDefaultType")
+
+  @@index([userId])
+}
+
+model Collection {
+  id          String  @id @default(cuid())
+  name        String
+  description String?
+  isFavorite  Boolean @default(false)
+
+  // default type for new/empty collections
+  defaultType   ItemType? @relation("CollectionDefaultType", fields: [defaultTypeId], references: [id])
+  defaultTypeId String?
+
+  user   User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+  items  ItemCollection[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+// Join table: item <-> collection (many-to-many with metadata)
+model ItemCollection {
+  item         Item       @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  itemId       String
+  collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  collectionId String
+  addedAt      DateTime   @default(now())
+
+  @@id([itemId, collectionId])
+  @@index([collectionId])
+}
+
+model Tag {
+  id    String @id @default(cuid())
+  name  String
+  items Item[] // implicit many-to-many
+
+  @@unique([name])
+}
