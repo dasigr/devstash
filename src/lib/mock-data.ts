@@ -218,7 +218,7 @@ export const pinnedItems: Item[] = [
     language: "typescript",
     tags: ["react", "hooks", "typescript"],
     isPinned: true,
-    isFavorite: false,
+    isFavorite: true,
     updatedAt: "2h ago",
   },
   {
@@ -229,7 +229,7 @@ export const pinnedItems: Item[] = [
       "You are a meticulous senior software engineer reviewing a PR…",
     tags: ["review", "system", "meta"],
     isPinned: true,
-    isFavorite: false,
+    isFavorite: true,
     updatedAt: "5h ago",
   },
   {
@@ -287,7 +287,7 @@ export const recentItems: Item[] = [
     preview: "https://ui.shadcn.com",
     tags: ["ui", "react", "reference"],
     isPinned: false,
-    isFavorite: false,
+    isFavorite: true,
     updatedAt: "3h ago",
   },
   {
