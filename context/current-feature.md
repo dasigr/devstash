@@ -2,39 +2,17 @@
 
 <!-- Feature Name -->
 
-Dashboard UI — Phase 3 (Main Content)
-
 ## Status
 
 <!-- Not Started|In Progress|Completed -->
-
-Completed
 
 ## Goals
 
 <!-- Goals & requirements -->
 
-Phase 3 of 3 for the dashboard UI layout. Build out the main content area to the
-right of the sidebar (from Phase 2). Import data directly from `src/lib/mock-data.js`
-until the database is implemented. Follow `context/screenshots/dashboard-ui-main.png`
-as the visual reference (does not have to be exact).
-
-- **4 stats cards** at the top — number of items, collections, favorite items, and
-  favorite collections _(not in the screenshot)_.
-- **Recent collections** — grid of color-coded collection cards (background reflects
-  the item type each collection holds most; show only the item-type icons of items in
-  the collection).
-- **Pinned items** — color-coded cards (left border reflects item type).
-- **Recent items** — 10 most recent, as color-coded cards (left border reflects item type).
-
 ## Notes
 
 <!-- Any extra notes -->
-
-Full spec: `context/features/dashboard-phase-3-spec.md`.
-
-References: `context/screenshots/dashboard-ui-main.png`, `context/project-overview.md`,
-`src/lib/mock-data.js`, and the Phase 1 / Phase 2 specs in `context/features/`.
 
 ## History
 
