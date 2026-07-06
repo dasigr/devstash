@@ -12,6 +12,7 @@ import {
   X,
 } from "lucide-react";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { currentUser } from "@/lib/mock-data";
@@ -28,6 +29,8 @@ interface NavRowProps {
   onNavigate?: () => void;
   icon: React.ReactNode;
   label: string;
+  /** Rendered inline, right after the label (e.g. a PRO badge). */
+  badge?: React.ReactNode;
   trailing?: React.ReactNode;
 }
 
@@ -38,6 +41,7 @@ function NavRow({
   onNavigate,
   icon,
   label,
+  badge,
   trailing,
 }: NavRowProps) {
   return (
@@ -57,7 +61,12 @@ function NavRow({
       <span className="flex size-5 shrink-0 items-center justify-center">
         {icon}
       </span>
-      {!collapsed && <span className="flex-1 truncate">{label}</span>}
+      {!collapsed && (
+        <span className="flex min-w-0 flex-1 items-center gap-2">
+          <span className="truncate">{label}</span>
+          {badge}
+        </span>
+      )}
       {!collapsed && trailing}
     </Link>
   );
@@ -168,16 +177,20 @@ function SidebarContent({
               />
             }
             label={type.name}
-            trailing={
+            badge={
               type.isPro ? (
-                <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-semibold uppercase text-muted-foreground">
-                  Pro
-                </span>
-              ) : (
-                <span className="text-xs tabular-nums text-muted-foreground">
-                  {type.count}
-                </span>
-              )
+                <Badge
+                  variant="secondary"
+                  className="h-auto px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+                >
+                  PRO
+                </Badge>
+              ) : undefined
+            }
+            trailing={
+              <span className="text-xs tabular-nums text-muted-foreground">
+                {type.count}
+              </span>
             }
           />
         ))}
