@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Home,
@@ -20,79 +19,9 @@ import type { SidebarItemType } from "@/lib/db/items";
 import type { SidebarCollection } from "@/lib/db/collections";
 import { ItemTypeIcon } from "@/components/dashboard/ItemTypeIcon";
 import { Logo } from "@/components/dashboard/Logo";
+import { NavRow } from "@/components/dashboard/NavRow";
+import { SectionLabel } from "@/components/dashboard/SectionLabel";
 import { useSidebar } from "@/components/dashboard/sidebar-context";
-
-interface NavRowProps {
-  href: string;
-  active: boolean;
-  collapsed: boolean;
-  onNavigate?: () => void;
-  icon: React.ReactNode;
-  label: string;
-  /** Rendered inline, right after the label (e.g. a PRO badge). */
-  badge?: React.ReactNode;
-  trailing?: React.ReactNode;
-}
-
-function NavRow({
-  href,
-  active,
-  collapsed,
-  onNavigate,
-  icon,
-  label,
-  badge,
-  trailing,
-}: NavRowProps) {
-  return (
-    <Link
-      href={href}
-      onClick={onNavigate}
-      title={collapsed ? label : undefined}
-      aria-current={active ? "page" : undefined}
-      className={cn(
-        "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
-        collapsed && "justify-center px-0",
-        active
-          ? "bg-muted font-medium text-foreground"
-          : "text-muted-foreground hover:bg-muted hover:text-foreground"
-      )}
-    >
-      <span className="flex size-5 shrink-0 items-center justify-center">
-        {icon}
-      </span>
-      {!collapsed && (
-        <span className="flex min-w-0 flex-1 items-center gap-2">
-          <span className="truncate">{label}</span>
-          {badge}
-        </span>
-      )}
-      {!collapsed && trailing}
-    </Link>
-  );
-}
-
-function SectionLabel({
-  children,
-  collapsed,
-  action,
-}: {
-  children: React.ReactNode;
-  collapsed: boolean;
-  action?: React.ReactNode;
-}) {
-  if (collapsed) {
-    return <div className="mx-3 my-2 border-t border-border" />;
-  }
-  return (
-    <div className="flex items-center justify-between px-3 pt-4 pb-1">
-      <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground/70">
-        {children}
-      </p>
-      {action}
-    </div>
-  );
-}
 
 interface SidebarContentProps {
   collapsed: boolean;
