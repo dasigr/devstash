@@ -8,8 +8,13 @@ import { SectionHeader } from "@/components/dashboard/SectionHeader";
 import { CollectionCard } from "@/components/dashboard/CollectionCard";
 import { ItemCard } from "@/components/dashboard/ItemCard";
 import type { Metadata } from "next";
+import { connection } from "next/server";
 
-import { collections, pinnedItems, recentItems } from "@/lib/mock-data";
+import { pinnedItems, recentItems } from "@/lib/mock-data";
+import {
+  getCollectionStats,
+  getRecentCollections,
+} from "@/lib/db/collections";
 
 export const metadata: Metadata = {
   title: "Dashboard",
@@ -18,7 +23,15 @@ export const metadata: Metadata = {
 // Show up to 10 of the most recent items (mock order stands in for recency).
 const recent = recentItems.slice(0, 10);
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  // Read live collection data per request rather than baking it in at build.
+  await connection();
+
+  const [collections, collectionStats] = await Promise.all([
+    getRecentCollections(),
+    getCollectionStats(),
+  ]);
+
   return (
     <SidebarProvider>
       <div className="flex h-full min-h-screen bg-background text-foreground">
@@ -30,7 +43,10 @@ export default function DashboardPage() {
           <main className="flex-1 space-y-8 overflow-y-auto p-6">
             <h1 className="text-2xl font-semibold text-foreground">Dashboard</h1>
 
-            <StatsCards />
+            <StatsCards
+              collectionsCount={collectionStats.total}
+              favoriteCollectionsCount={collectionStats.favorites}
+            />
 
             {/* Collections */}
             <section>

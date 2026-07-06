@@ -1,9 +1,9 @@
 import { cn } from "@/lib/utils";
 import { ItemTypeIcon } from "@/components/dashboard/ItemTypeIcon";
-import type { ItemType } from "@/lib/mock-data";
 
 interface ItemTypeBadgeProps {
-  type: ItemType;
+  /** Only the fields needed to render the badge (name, color, lucide icon). */
+  type: { name: string; color: string; icon: string };
   size?: "sm" | "md";
   className?: string;
 }
