@@ -423,9 +423,9 @@ Freemium model. **During development, all users can access everything** — but 
 Refer to the screenshots below as a base for the Dashboard UI. It does not have to be exact. Use it as a reference:
 
 - @context/screenshots/dashboard-ui-main.png
-- @contact/screenshots/dashboard-ui-drawer.png
-- @contact/screenshots/dashboard-ui-drawer-image.png
-- @contact/screenshots/dashboard-ui-sidebar-collapsed.png
+- @context/screenshots/dashboard-ui-drawer.png
+- @context/screenshots/dashboard-ui-drawer-image.png
+- @context/screenshots/dashboard-ui-sidebar-collapsed.png
 
 ### Layout
 
