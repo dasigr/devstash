@@ -128,3 +128,63 @@ export async function getItemStats(): Promise<{
   ]);
   return { total, favorites };
 }
+
+/** A system item type prepared for the sidebar nav. */
+export interface SidebarItemType {
+  id: string;
+  /** Display label, e.g. "Snippets". */
+  name: string;
+  /** Route slug under /items, e.g. "snippets". */
+  slug: string;
+  color: string;
+  icon: string;
+  /** Pro-gated type (file / image), per the documented data model. */
+  isPro: boolean;
+  /** Number of items of this type. */
+  count: number;
+}
+
+// The data model designates file & image as the Pro-only types; ItemType has no
+// isPro column, so we derive it from the system type name.
+const PRO_TYPE_NAMES = new Set(["file", "image"]);
+
+// Display order for the sidebar, matching the item-types table in the overview.
+const TYPE_ORDER = [
+  "snippet",
+  "prompt",
+  "note",
+  "command",
+  "link",
+  "file",
+  "image",
+];
+
+/**
+ * The system item types for the sidebar, each with a live item count, ordered
+ * to match the documented item-types table. Names are stored singular/lowercase
+ * (e.g. "snippet"); we pluralize for the label and the /items/<slug> route.
+ */
+export async function getSidebarItemTypes(): Promise<SidebarItemType[]> {
+  const types = await prisma.itemType.findMany({
+    where: { isSystem: true },
+    select: {
+      id: true,
+      name: true,
+      color: true,
+      icon: true,
+      _count: { select: { items: true } },
+    },
+  });
+
+  return types
+    .sort((a, b) => TYPE_ORDER.indexOf(a.name) - TYPE_ORDER.indexOf(b.name))
+    .map((type) => ({
+      id: type.id,
+      name: `${type.name[0].toUpperCase()}${type.name.slice(1)}s`,
+      slug: `${type.name}s`,
+      color: type.color,
+      icon: type.icon,
+      isPro: PRO_TYPE_NAMES.has(type.name),
+      count: type._count.items,
+    }));
+}

@@ -88,3 +88,59 @@ export async function getCollectionStats(): Promise<{
   ]);
   return { total, favorites };
 }
+
+/** A collection prepared for the sidebar list. */
+export interface SidebarCollection {
+  id: string;
+  name: string;
+  isFavorite: boolean;
+  /** Color of the most-used item type — drives the recents circle. */
+  color: string | null;
+}
+
+/**
+ * Collections for the sidebar list: favorites first, then most recently
+ * updated, capped. Each carries the color of its most-used item type so a
+ * non-favorite can render a colored circle.
+ */
+export async function getSidebarCollections(
+  limit = 6
+): Promise<SidebarCollection[]> {
+  const collections = await prisma.collection.findMany({
+    orderBy: [{ isFavorite: "desc" }, { updatedAt: "desc" }],
+    take: limit,
+    include: {
+      items: {
+        include: {
+          item: {
+            select: { itemType: { select: { id: true, color: true } } },
+          },
+        },
+      },
+    },
+  });
+
+  return collections.map((collection) => {
+    // Find the most-used item type so the circle reflects the collection's
+    // primary type.
+    const counts = new Map<string, { color: string; count: number }>();
+    for (const { item } of collection.items) {
+      const type = item.itemType;
+      const entry = counts.get(type.id);
+      if (entry) {
+        entry.count += 1;
+      } else {
+        counts.set(type.id, { color: type.color, count: 1 });
+      }
+    }
+
+    const primary = [...counts.values()].sort((a, b) => b.count - a.count)[0];
+
+    return {
+      id: collection.id,
+      name: collection.name,
+      isFavorite: collection.isFavorite,
+      color: primary?.color ?? null,
+    };
+  });
+}

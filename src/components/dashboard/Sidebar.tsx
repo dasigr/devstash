@@ -14,27 +14,12 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import {
-  collections,
-  currentUser,
-  itemTypes,
-} from "@/lib/mock-data";
+import { currentUser } from "@/lib/mock-data";
+import type { SidebarItemType } from "@/lib/db/items";
+import type { SidebarCollection } from "@/lib/db/collections";
 import { ItemTypeIcon } from "@/components/dashboard/ItemTypeIcon";
 import { Logo } from "@/components/dashboard/Logo";
 import { useSidebar } from "@/components/dashboard/sidebar-context";
-
-const totalItems = itemTypes.reduce((sum, type) => sum + type.count, 0);
-const itemTypeById = new Map(itemTypes.map((type) => [type.id, type]));
-
-// One "Collections" list combining favorites (starred) with the most recent
-// non-favorite collections. Mock data has no timestamps, so array order stands
-// in for recency. Capped so the sidebar stays tidy.
-const favoriteCollections = collections.filter((c) => c.isFavorite);
-const recentCollections = collections.filter((c) => !c.isFavorite);
-const sidebarCollections = [...favoriteCollections, ...recentCollections].slice(
-  0,
-  6
-);
 
 interface NavRowProps {
   href: string;
@@ -102,14 +87,23 @@ function SectionLabel({
 
 interface SidebarContentProps {
   collapsed: boolean;
+  itemTypes: SidebarItemType[];
+  collections: SidebarCollection[];
   /** Fires when a nav link is clicked — used to close the mobile drawer. */
   onNavigate?: () => void;
   /** When set, renders a close button in the header (mobile drawer). */
   onClose?: () => void;
 }
 
-function SidebarContent({ collapsed, onNavigate, onClose }: SidebarContentProps) {
+function SidebarContent({
+  collapsed,
+  itemTypes,
+  collections,
+  onNavigate,
+  onClose,
+}: SidebarContentProps) {
   const pathname = usePathname();
+  const totalItems = itemTypes.reduce((sum, type) => sum + type.count, 0);
 
   return (
     <div className="flex h-full flex-col">
@@ -162,8 +156,8 @@ function SidebarContent({ collapsed, onNavigate, onClose }: SidebarContentProps)
         {itemTypes.map((type) => (
           <NavRow
             key={type.id}
-            href={type.route}
-            active={pathname === type.route}
+            href={`/items/${type.slug}`}
+            active={pathname === `/items/${type.slug}`}
             collapsed={collapsed}
             onNavigate={onNavigate}
             icon={
@@ -202,31 +196,41 @@ function SidebarContent({ collapsed, onNavigate, onClose }: SidebarContentProps)
         >
           Collections
         </SectionLabel>
-        {sidebarCollections.map((collection) => {
-          const color = itemTypeById.get(collection.itemTypeIds[0])?.color;
-          return (
-            <NavRow
-              key={collection.id}
-              href={`/collections/${collection.id}`}
-              active={pathname === `/collections/${collection.id}`}
-              collapsed={collapsed}
-              onNavigate={onNavigate}
-              icon={
+        {collections.map((collection) => (
+          <NavRow
+            key={collection.id}
+            href={`/collections/${collection.id}`}
+            active={pathname === `/collections/${collection.id}`}
+            collapsed={collapsed}
+            onNavigate={onNavigate}
+            icon={
+              // Favorites show a star; recents show a circle colored by the
+              // collection's most-used item type.
+              collection.isFavorite ? (
+                <Star className="size-3.5 fill-amber-400 text-amber-400" />
+              ) : (
                 <span
-                  className="size-2.5 rounded-full"
-                  // Dot color reflects the collection's primary item type.
-                  style={color ? { backgroundColor: color } : undefined}
+                  className="size-2.5 rounded-full bg-muted-foreground/40"
+                  style={
+                    collection.color
+                      ? { backgroundColor: collection.color }
+                      : undefined
+                  }
                 />
-              }
-              label={collection.name}
-              trailing={
-                collection.isFavorite ? (
-                  <Star className="size-3.5 fill-amber-400 text-amber-400" />
-                ) : undefined
-              }
-            />
-          );
-        })}
+              )
+            }
+            label={collection.name}
+          />
+        ))}
+
+        <NavRow
+          href="/collections"
+          active={pathname === "/collections"}
+          collapsed={collapsed}
+          onNavigate={onNavigate}
+          icon={<LayoutGrid className="size-4" />}
+          label="View all collections"
+        />
       </nav>
 
       {/* User area */}
@@ -268,7 +272,12 @@ function SidebarContent({ collapsed, onNavigate, onClose }: SidebarContentProps)
   );
 }
 
-export function Sidebar() {
+interface SidebarProps {
+  itemTypes: SidebarItemType[];
+  collections: SidebarCollection[];
+}
+
+export function Sidebar({ itemTypes, collections }: SidebarProps) {
   const { collapsed, mobileOpen, closeMobile } = useSidebar();
 
   // Lock body scroll and allow Escape to close while the mobile drawer is open.
@@ -294,7 +303,11 @@ export function Sidebar() {
           collapsed ? "w-16" : "w-64"
         )}
       >
-        <SidebarContent collapsed={collapsed} />
+        <SidebarContent
+          collapsed={collapsed}
+          itemTypes={itemTypes}
+          collections={collections}
+        />
       </aside>
 
       {/* Mobile drawer overlay */}
@@ -319,6 +332,8 @@ export function Sidebar() {
       >
         <SidebarContent
           collapsed={false}
+          itemTypes={itemTypes}
+          collections={collections}
           onNavigate={closeMobile}
           onClose={closeMobile}
         />
