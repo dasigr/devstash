@@ -45,3 +45,6 @@ next-env.d.ts
 
 # playwright MCP session artifacts
 .playwright-mcp/
+
+# MCP server config (may contain secrets / local paths)
+.mcp.json
