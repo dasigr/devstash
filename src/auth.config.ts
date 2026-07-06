@@ -12,6 +12,9 @@ import Credentials from "next-auth/providers/credentials";
 // the edge bundle stays free of Prisma/bcrypt. The real bcrypt validation is
 // supplied in src/auth.ts, which overrides this provider in the Node runtime.
 export const authConfig = {
+  pages: {
+    signIn: "/sign-in",
+  },
   providers: [
     GitHub,
     Credentials({
