@@ -1,28 +1,26 @@
 import { Clock, Pin, Star } from "lucide-react";
 
-import { itemTypes, type Item } from "@/lib/mock-data";
+import type { DashboardItem } from "@/lib/db/items";
 import { ItemTypeBadge } from "@/components/dashboard/ItemTypeBadge";
-
-const itemTypeById = new Map(itemTypes.map((type) => [type.id, type]));
 
 /**
  * An item card for the Pinned and Recent sections. The left border is colored
  * to reflect the item's type; a pin (or favorite star) shows in the corner.
  */
-export function ItemCard({ item }: { item: Item }) {
-  const type = itemTypeById.get(item.itemTypeId);
+export function ItemCard({ item }: { item: DashboardItem }) {
+  const type = item.itemType;
 
   return (
     <div
       className="flex flex-col rounded-xl border border-l-4 border-border bg-card p-4 transition-colors hover:border-muted-foreground/30"
       // Left accent reflects the item's type.
-      style={type ? { borderLeftColor: type.color } : undefined}
+      style={{ borderLeftColor: type.color }}
     >
       <div className="flex items-start gap-3">
-        {type && <ItemTypeBadge type={type} size="md" />}
+        <ItemTypeBadge type={type} size="md" />
         <div className="min-w-0 flex-1">
           <h3 className="truncate font-medium text-foreground">{item.title}</h3>
-          <p className="text-xs text-muted-foreground">{type?.name}</p>
+          <p className="text-xs text-muted-foreground">{type.name}</p>
         </div>
         {item.isPinned ? (
           <Pin className="size-4 shrink-0 rotate-45 text-muted-foreground" />

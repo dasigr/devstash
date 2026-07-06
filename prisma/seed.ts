@@ -33,6 +33,7 @@ type SeedItem = {
   language?: string;
   url?: string;
   tags: string[];
+  isPinned?: boolean;
 };
 
 type SeedCollection = {
@@ -56,6 +57,7 @@ const collections: SeedCollection[] = [
         language: "typescript",
         description: "Debounce a fast-changing value",
         tags: ["react", "hooks", "typescript"],
+        isPinned: true,
         content: `import { useEffect, useState } from "react";
 
 export function useDebounce<T>(value: T, delay = 300): T {
@@ -118,6 +120,7 @@ export function cn(...inputs: ClassValue[]): string {
         typeId: "type_prompt",
         description: "Thorough PR review prompt",
         tags: ["review", "system", "meta"],
+        isPinned: true,
         content: `You are a meticulous senior software engineer reviewing a pull request.
 Focus on correctness, edge cases, security, and performance — not style nits.
 For each issue: cite the file and line, explain the impact, and suggest a concrete fix.
@@ -220,6 +223,7 @@ CMD ["npm", "start"]`,
         language: "bash",
         description: "Reclaim space from unused images, containers, and volumes",
         tags: ["docker", "cleanup", "ops"],
+        isPinned: true,
         content: "docker system prune -af --volumes",
       },
       {
@@ -350,6 +354,7 @@ async function main() {
         data: {
           title: item.title,
           description: item.description ?? null,
+          isPinned: item.isPinned ?? false,
           userId: user.id,
           itemTypeId: item.typeId,
           ...contentFields(item),
