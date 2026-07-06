@@ -13,11 +13,13 @@ import { connection } from "next/server";
 import {
   getCollectionStats,
   getRecentCollections,
+  getSidebarCollections,
 } from "@/lib/db/collections";
 import {
   getItemStats,
   getPinnedItems,
   getRecentItems,
+  getSidebarItemTypes,
 } from "@/lib/db/items";
 
 export const metadata: Metadata = {
@@ -34,18 +36,25 @@ export default async function DashboardPage() {
     pinnedItems,
     recentItems,
     itemStats,
+    sidebarItemTypes,
+    sidebarCollections,
   ] = await Promise.all([
     getRecentCollections(),
     getCollectionStats(),
     getPinnedItems(),
     getRecentItems(),
     getItemStats(),
+    getSidebarItemTypes(),
+    getSidebarCollections(),
   ]);
 
   return (
     <SidebarProvider>
       <div className="flex h-full min-h-screen bg-background text-foreground">
-        <Sidebar />
+        <Sidebar
+          itemTypes={sidebarItemTypes}
+          collections={sidebarCollections}
+        />
 
         {/* Main column: top bar + content */}
         <div className="flex min-w-0 flex-1 flex-col">
