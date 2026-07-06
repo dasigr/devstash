@@ -1,21 +1,18 @@
-# Current Feature: Add Pro Badge to Sidebar
+# Current Feature
+
+<!-- Feature Name -->
 
 ## Status
 
-In Progress
+<!-- Not Started|In Progress|Completed -->
 
 ## Goals
 
-- Add a "PRO" badge to the File and Image item types in the sidebar
-- Use the ShadCN UI badge component
-- Keep the badge clean and subtle
-- Render "PRO" in all uppercase
+<!-- Goals & requirements -->
 
 ## Notes
 
-- Source spec: `context/features/add-pro-badge-sidebar.spec.md`
-- The sidebar already flags file/image types as Pro (`isPro`) from `getSidebarItemTypes()`; this feature swaps the current Pro indicator for the ShadCN `badge` component.
-- ShadCN `badge` component may need to be added via the shadcn CLI if not already present.
+<!-- Any extra notes -->
 
 ## History
 
@@ -30,3 +27,4 @@ In Progress
 - **Dashboard Collections — Real Data** — Replaced the dummy collection cards in the dashboard main area with live data from Neon via Prisma (items underneath deferred). Added `src/lib/db/collections.ts` with `getRecentCollections(limit = 6)` — fetches the most recently updated collections with their items' item types, then per collection derives `itemCount` and the item types it holds **ordered most-used first** (drives both the card's primary tint/border color and the badge row) — plus `getCollectionStats()` for total/favorite counts. Reworked `CollectionCard` to take the DB-shaped `DashboardCollection` (using the pre-resolved, pre-ordered `itemTypes`) instead of the `mock-data` lookup, narrowed `ItemTypeBadge`'s prop to `{ name, color, icon }` so it no longer depends on the mock `ItemType`, and switched the `StatsCards` Collections/Favorite Collections tiles to real counts via props (Items/Favorite Items stay on mock until items are wired). The dashboard page now fetches collections + stats via `Promise.all` and calls `await connection()` (Next 16's replacement for `force-dynamic`/`noStore`) so `/dashboard` renders request-time dynamic (`ƒ`) rather than statically baked at build. Pinned/Recent items still use mock data. Build and lint pass; verified against the live Neon branch (5 collections in recency order with correct counts and type badges, stats reading 5 Collections / 3 Favorite Collections).
 - **Dashboard Items — Real Data** — Replaced the dummy Pinned/Recent item cards and the Items/Favorite Items stat tiles with live data from Neon via Prisma. Added `src/lib/db/items.ts` with a shared `DashboardItem` shape and mapper (`toDashboardItem`) that derives each card's `preview` from the content type (URL → `url`, FILE → `fileName`, else `content`), formats `updatedAt` into a short relative time (`relativeTime` → "2h ago"/"yesterday"/"3d ago"…), and flattens tags + a `{ id, name, color, icon }` item-type summary — exposing `getPinnedItems()` (isPinned, most-recent first; empty array when none), `getRecentItems(limit = 10)`, and `getItemStats()` (total + favorite counts). Reworked `ItemCard` to take the DB-shaped `DashboardItem` with its pre-resolved `itemType` (dropping the `mock-data` lookup; border/badge still driven by type color), and switched `StatsCards`' Items/Favorite Items tiles to real counts via new props. The dashboard page fetches items + stats alongside collections in one `Promise.all` and **hides the Pinned Items section entirely when nothing is pinned** (per spec). Also added an optional `isPinned` flag to `prisma/seed.ts`'s `SeedItem` (persisted on create) and pinned 3 items — useDebounce hook (snippet), Senior code reviewer (prompt), Prune Docker system (command) — then re-seeded so the Pinned section renders. `mock-data.ts` left untouched (still used by the sidebar). Build and lint pass; a fresh `tsc --noEmit` is clean; verified against the live Neon branch (18 items, 3 pinned, stats wired).
 - **Stats & Sidebar — Real Data** — Moved the sidebar off `mock-data.ts` onto live Neon data via Prisma (the main-area stats were already DB-backed from the prior two features, so they were left as-is). Added `getSidebarItemTypes()` to `src/lib/db/items.ts` — the 7 system item types with a live per-type item count (`_count`), ordered to match the documented item-types table, deriving each type's display label + `/items/<slug>` route by pluralizing the singular stored name (e.g. `snippet` → "Snippets" / `snippets`) and its `isPro` flag from the `{file, image}` set (since `ItemType` has no `isPro` column). Added `getSidebarCollections(limit = 6)` to `src/lib/db/collections.ts` — favorites-first then most-recently-updated, each carrying the color of its most-used item type. Converted `Sidebar` from a self-contained mock reader into a props-driven component (`itemTypes`, `collections`) threaded through `SidebarContent` and both the desktop-rail and mobile-drawer render sites; the dashboard page now fetches both alongside the existing data in one `Promise.all`. Item Types link to `/items/<slug>` with colored icons, counts, and Pro badges; collections render a **star** for favorites and a **colored circle** (most-used type color) for recents, with a new **"View all collections"** row linking to `/collections`. The sidebar user area still uses the mock `currentUser` (no auth yet). `/items/<slug>` and `/collections` routes don't exist yet, so those links 404 until built (spec only asked to wire them). Build, lint, and `tsc --noEmit` clean; verified against the live Neon branch (7 item types with correct counts/slugs/Pro badges, 3 favorite + 2 recent collections rendering stars/circles).
+- **Add Pro Badge to Sidebar** — Swapped the hand-rolled Pro pill on the File/Image sidebar item types for the **ShadCN `Badge`** component (installed `src/components/ui/badge.tsx` via `npx shadcn@latest add badge`). Rendered as a subtle **`secondary`** variant with a `text-muted-foreground` override, small `text-[10px]` uppercase **"PRO"** text. Extended `NavRow` with an optional `badge` prop that renders **inline right after the label** (label + badge wrapped in a `flex min-w-0 flex-1 items-center gap-2` container so the name truncates while the `shrink-0` badge stays intact), and reworked the Item Types rows so the **trailing slot now always shows the count** for every type (previously Pro rows showed the badge *instead of* a count — File/Image now read their real count, `0`). Net row layout: `📄 Files [PRO] ··· 0`. Build and lint pass; verified against the running dev server via the SSR'd `/dashboard` HTML (badges attach to the Files/Images rows across both the desktop-rail and mobile-drawer render sites, counts present in the trailing slot).
