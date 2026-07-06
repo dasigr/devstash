@@ -1,44 +1,16 @@
-# Current Feature: Auth Setup — NextAuth + GitHub Provider
+# Current Feature
 
 ## Status
 
-In Progress
+Not Started
 
 ## Goals
 
-- Install NextAuth v5 (`next-auth@beta`) and `@auth/prisma-adapter`
-- Set up the split auth config pattern for edge compatibility
-- Add the GitHub OAuth provider
-- Protect `/dashboard/*` routes using the Next.js 16 proxy
-- Redirect unauthenticated users to the (default NextAuth) sign-in page
+<!-- What does success look like? Bullet points. -->
 
 ## Notes
 
-**Spec:** `context/features/auth-phase-1-spec.md` — Set up NextAuth v5 with the Prisma adapter and GitHub OAuth, using NextAuth's default pages for testing.
-
-**Files to create:**
-
-1. `src/auth.config.ts` — edge-compatible config (providers only, no adapter)
-2. `src/auth.ts` — full config with Prisma adapter and JWT strategy
-3. `src/app/api/auth/[...nextauth]/route.ts` — export handlers from `auth.ts`
-4. `src/proxy.ts` — route protection with redirect logic
-5. `src/types/next-auth.d.ts` — extend the `Session` type with `user.id`
-
-**Key gotchas (verify against Context7 for newest conventions):**
-
-- Use `next-auth@beta` (not `@latest`, which installs v4)
-- Proxy file must be at `src/proxy.ts` (same level as `app/`)
-- Use a named export: `export const proxy = auth(...)`, not a default export
-- Use `session: { strategy: 'jwt' }` with the split config pattern
-- Don't set a custom `pages.signIn` — use NextAuth's default page
-
-**Environment variables:** `AUTH_SECRET`, `AUTH_GITHUB_ID`, `AUTH_GITHUB_SECRET`
-
-**Testing:** `/dashboard` should redirect to sign-in → "Sign in with GitHub" → redirect back to `/dashboard` after auth.
-
-**References:**
-- Edge compatibility: https://authjs.dev/getting-started/installation#edge-compatibility
-- Prisma adapter: https://authjs.dev/getting-started/adapters/prisma
+<!-- Spec details, constraints, gotchas, references. -->
 
 ## History
 
@@ -55,3 +27,4 @@ In Progress
 - **Stats & Sidebar — Real Data** — Moved the sidebar off `mock-data.ts` onto live Neon data via Prisma (the main-area stats were already DB-backed from the prior two features, so they were left as-is). Added `getSidebarItemTypes()` to `src/lib/db/items.ts` — the 7 system item types with a live per-type item count (`_count`), ordered to match the documented item-types table, deriving each type's display label + `/items/<slug>` route by pluralizing the singular stored name (e.g. `snippet` → "Snippets" / `snippets`) and its `isPro` flag from the `{file, image}` set (since `ItemType` has no `isPro` column). Added `getSidebarCollections(limit = 6)` to `src/lib/db/collections.ts` — favorites-first then most-recently-updated, each carrying the color of its most-used item type. Converted `Sidebar` from a self-contained mock reader into a props-driven component (`itemTypes`, `collections`) threaded through `SidebarContent` and both the desktop-rail and mobile-drawer render sites; the dashboard page now fetches both alongside the existing data in one `Promise.all`. Item Types link to `/items/<slug>` with colored icons, counts, and Pro badges; collections render a **star** for favorites and a **colored circle** (most-used type color) for recents, with a new **"View all collections"** row linking to `/collections`. The sidebar user area still uses the mock `currentUser` (no auth yet). `/items/<slug>` and `/collections` routes don't exist yet, so those links 404 until built (spec only asked to wire them). Build, lint, and `tsc --noEmit` clean; verified against the live Neon branch (7 item types with correct counts/slugs/Pro badges, 3 favorite + 2 recent collections rendering stars/circles).
 - **Add Pro Badge to Sidebar** — Swapped the hand-rolled Pro pill on the File/Image sidebar item types for the **ShadCN `Badge`** component (installed `src/components/ui/badge.tsx` via `npx shadcn@latest add badge`). Rendered as a subtle **`secondary`** variant with a `text-muted-foreground` override, small `text-[10px]` uppercase **"PRO"** text. Extended `NavRow` with an optional `badge` prop that renders **inline right after the label** (label + badge wrapped in a `flex min-w-0 flex-1 items-center gap-2` container so the name truncates while the `shrink-0` badge stays intact), and reworked the Item Types rows so the **trailing slot now always shows the count** for every type (previously Pro rows showed the badge *instead of* a count — File/Image now read their real count, `0`). Net row layout: `📄 Files [PRO] ··· 0`. Build and lint pass; verified against the running dev server via the SSR'd `/dashboard` HTML (badges attach to the Files/Images rows across both the desktop-rail and mobile-drawer render sites, counts present in the trailing slot).
 - **Code Scan Fixes — Type-Count Over-fetch & Sidebar Splitting** — Addressed the two actionable findings from a read-only code scan (1 Medium perf, 1 Low splitting), as pure refactors with no UI change. **Medium:** `getRecentCollections` and `getSidebarCollections` in `src/lib/db/collections.ts` were loading one `ItemCollection`→`itemType` join row per item just to tally types in JS. Replaced both with a shared `getTypeCountsByCollection()` helper backed by a single grouped **`$queryRaw`** that joins `ItemCollection → Item → ItemType` and returns per-(collection, type) counts `ORDER BY count DESC, name ASC` (raw SQL because `itemTypeId` lives on `Item`, not the join table, so Prisma `groupBy` can't span the join — the spec's `groupBy(['itemTypeId'])` suggestion isn't expressible). Both callers now `select` only their own scalar columns and derive `itemTypes`/`itemCount`/`color` from the aggregate; return shapes (`DashboardCollection`, `SidebarCollection`) unchanged, so `CollectionCard`/`Sidebar` needed no edits. **Low:** extracted `NavRow` → `src/components/dashboard/NavRow.tsx` (with `NavRowProps`) and `SectionLabel` → `src/components/dashboard/SectionLabel.tsx` from the 355-line `Sidebar.tsx`, imported them back, and dropped the now-dead `Link` import. No schema change (query-shape only), so the migrations policy didn't apply. `tsc --noEmit`, lint, and `npm run build` all clean (`/dashboard` still `ƒ`); verified against the live Neon branch that all 5 collections render identical counts, most-used-first type badges, and sidebar circle colors.
+- **Auth Setup — NextAuth + GitHub Provider (Phase 1)** — Set up **NextAuth v5** (`next-auth@^5.0.0-beta.31`) with the **`@auth/prisma-adapter`** using the split-config pattern for Next.js 16 edge/proxy compatibility. Added `src/auth.config.ts` — the edge-safe slice (providers only: `GitHub`, reading `AUTH_GITHUB_ID`/`AUTH_GITHUB_SECRET` from env; no adapter so the proxy bundle never pulls in Prisma/node-postgres) — and `src/auth.ts` — the full Node-runtime instance combining those providers with `PrismaAdapter(prisma)`, `session: { strategy: 'jwt' }` (DB sessions aren't edge-compatible and the proxy reads the token), and `jwt`/`session` callbacks that thread `user.id` onto the session. Added the catch-all handler at `src/app/api/auth/[...nextauth]/route.ts` (`export const { GET, POST } = handlers`), and route protection at `src/proxy.ts` — a **named `export const proxy = auth(...)`** (Next.js 16 renamed Middleware → Proxy) built from the edge-only `authConfig` that redirects unauthenticated visitors on `matcher: ['/dashboard/:path*']` to NextAuth's **default** sign-in page (`/api/auth/signin`, no custom `pages.signIn`), preserving the original URL as `callbackUrl`. Extended `src/types/next-auth.d.ts` with `Session.user.id` + `JWT.id`. Env vars `AUTH_SECRET`/`AUTH_GITHUB_ID`/`AUTH_GITHUB_SECRET` present in `.env` and documented in `.env.example`. `npm run build` clean — proxy registers as `ƒ Proxy (Middleware)`, `/api/auth/[...nextauth]` and `/dashboard` both dynamic (`ƒ`). Browser OAuth round-trip not yet exercised (needs a real GitHub OAuth app with callback `http://localhost:3000/api/auth/callback/github`). Also committed a small housekeeping chore: gitignore + untrack `.mcp.json`.
