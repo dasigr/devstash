@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@/generated/prisma/client";
 
 /** Minimal item-type shape a collection card needs to render a badge. */
 export interface CollectionTypeSummary {
@@ -6,6 +7,59 @@ export interface CollectionTypeSummary {
   name: string;
   color: string;
   icon: string;
+}
+
+/** One (collection, item type) tally row from the grouped aggregate query. */
+interface TypeCountRow {
+  collectionId: string;
+  typeId: string;
+  typeName: string;
+  typeColor: string;
+  typeIcon: string;
+  count: number;
+}
+
+/**
+ * Count items per (collection, item type) in a single grouped query, so we don't
+ * load one row per item just to tally types. Returns the tally rows for the given
+ * collections, most-used type first within each collection.
+ *
+ * `itemTypeId` lives on `Item` (not the join table), so this joins
+ * `ItemCollection -> Item -> ItemType`; Prisma `groupBy` can't span that join,
+ * hence the raw grouped query.
+ */
+async function getTypeCountsByCollection(
+  collectionIds: string[]
+): Promise<Map<string, TypeCountRow[]>> {
+  const byCollection = new Map<string, TypeCountRow[]>();
+  if (collectionIds.length === 0) return byCollection;
+
+  const rows = await prisma.$queryRaw<TypeCountRow[]>`
+    SELECT ic."collectionId" AS "collectionId",
+           t."id"            AS "typeId",
+           t."name"          AS "typeName",
+           t."color"         AS "typeColor",
+           t."icon"          AS "typeIcon",
+           COUNT(*)::int     AS "count"
+    FROM "ItemCollection" ic
+    JOIN "Item" i     ON i."id" = ic."itemId"
+    JOIN "ItemType" t ON t."id" = i."itemTypeId"
+    WHERE ic."collectionId" IN (${Prisma.join(collectionIds)})
+    GROUP BY ic."collectionId", t."id", t."name", t."color", t."icon"
+    ORDER BY "count" DESC, t."name" ASC
+  `;
+
+  // Rows arrive most-used first (ORDER BY count DESC), so appending preserves
+  // that order per collection.
+  for (const row of rows) {
+    const list = byCollection.get(row.collectionId);
+    if (list) {
+      list.push(row);
+    } else {
+      byCollection.set(row.collectionId, [row]);
+    }
+  }
+  return byCollection;
 }
 
 /** A collection prepared for the dashboard grid. */
@@ -30,48 +84,30 @@ export async function getRecentCollections(
   const collections = await prisma.collection.findMany({
     orderBy: { updatedAt: "desc" },
     take: limit,
-    include: {
-      items: {
-        include: {
-          item: {
-            select: {
-              itemType: {
-                select: { id: true, name: true, color: true, icon: true },
-              },
-            },
-          },
-        },
-      },
-    },
+    select: { id: true, name: true, description: true, isFavorite: true },
   });
 
-  return collections.map((collection) => {
-    // Tally items per type so badges show most-used first and the card is
-    // tinted by its primary (most common) type.
-    const counts = new Map<
-      string,
-      { type: CollectionTypeSummary; count: number }
-    >();
-    for (const { item } of collection.items) {
-      const type = item.itemType;
-      const entry = counts.get(type.id);
-      if (entry) {
-        entry.count += 1;
-      } else {
-        counts.set(type.id, { type, count: 1 });
-      }
-    }
+  const typeCounts = await getTypeCountsByCollection(
+    collections.map((c) => c.id)
+  );
 
-    const itemTypes = [...counts.values()]
-      .sort((a, b) => b.count - a.count)
-      .map((entry) => entry.type);
+  return collections.map((collection) => {
+    // Grouped rows come most-used first; the card tints by the primary type
+    // (first entry) and shows a badge per type present.
+    const rows = typeCounts.get(collection.id) ?? [];
+    const itemTypes: CollectionTypeSummary[] = rows.map((row) => ({
+      id: row.typeId,
+      name: row.typeName,
+      color: row.typeColor,
+      icon: row.typeIcon,
+    }));
 
     return {
       id: collection.id,
       name: collection.name,
       description: collection.description,
       isFavorite: collection.isFavorite,
-      itemCount: collection.items.length,
+      itemCount: rows.reduce((sum, row) => sum + row.count, 0),
       itemTypes,
     };
   });
@@ -109,38 +145,23 @@ export async function getSidebarCollections(
   const collections = await prisma.collection.findMany({
     orderBy: [{ isFavorite: "desc" }, { updatedAt: "desc" }],
     take: limit,
-    include: {
-      items: {
-        include: {
-          item: {
-            select: { itemType: { select: { id: true, color: true } } },
-          },
-        },
-      },
-    },
+    select: { id: true, name: true, isFavorite: true },
   });
 
-  return collections.map((collection) => {
-    // Find the most-used item type so the circle reflects the collection's
-    // primary type.
-    const counts = new Map<string, { color: string; count: number }>();
-    for (const { item } of collection.items) {
-      const type = item.itemType;
-      const entry = counts.get(type.id);
-      if (entry) {
-        entry.count += 1;
-      } else {
-        counts.set(type.id, { color: type.color, count: 1 });
-      }
-    }
+  const typeCounts = await getTypeCountsByCollection(
+    collections.map((c) => c.id)
+  );
 
-    const primary = [...counts.values()].sort((a, b) => b.count - a.count)[0];
+  return collections.map((collection) => {
+    // Grouped rows come most-used first, so the first row is the primary type;
+    // the circle reflects its color (null when the collection is empty).
+    const primary = typeCounts.get(collection.id)?.[0];
 
     return {
       id: collection.id,
       name: collection.name,
       isFavorite: collection.isFavorite,
-      color: primary?.color ?? null,
+      color: primary?.typeColor ?? null,
     };
   });
 }
