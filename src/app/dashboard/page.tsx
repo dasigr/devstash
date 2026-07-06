@@ -21,6 +21,7 @@ import {
   getRecentItems,
   getSidebarItemTypes,
 } from "@/lib/db/items";
+import { getCurrentUser } from "@/lib/db/user";
 
 export const metadata: Metadata = {
   title: "Dashboard",
@@ -38,6 +39,7 @@ export default async function DashboardPage() {
     itemStats,
     sidebarItemTypes,
     sidebarCollections,
+    currentUser,
   ] = await Promise.all([
     getRecentCollections(),
     getCollectionStats(),
@@ -46,7 +48,16 @@ export default async function DashboardPage() {
     getItemStats(),
     getSidebarItemTypes(),
     getSidebarCollections(),
+    getCurrentUser(),
   ]);
+
+  // The proxy guarantees a session on /dashboard; fall back defensively.
+  const sidebarUser = currentUser ?? {
+    name: null,
+    email: null,
+    image: null,
+    isPro: false,
+  };
 
   return (
     <SidebarProvider>
@@ -54,6 +65,7 @@ export default async function DashboardPage() {
         <Sidebar
           itemTypes={sidebarItemTypes}
           collections={sidebarCollections}
+          user={sidebarUser}
         />
 
         {/* Main column: top bar + content */}

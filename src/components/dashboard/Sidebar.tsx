@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import {
   Home,
   LayoutGrid,
-  MoreHorizontal,
   Plus,
   Star,
   X,
@@ -14,19 +13,20 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { currentUser } from "@/lib/mock-data";
 import type { SidebarItemType } from "@/lib/db/items";
 import type { SidebarCollection } from "@/lib/db/collections";
 import { ItemTypeIcon } from "@/components/dashboard/ItemTypeIcon";
 import { Logo } from "@/components/dashboard/Logo";
 import { NavRow } from "@/components/dashboard/NavRow";
 import { SectionLabel } from "@/components/dashboard/SectionLabel";
+import { SidebarUser, type SidebarUserData } from "@/components/dashboard/SidebarUser";
 import { useSidebar } from "@/components/dashboard/sidebar-context";
 
 interface SidebarContentProps {
   collapsed: boolean;
   itemTypes: SidebarItemType[];
   collections: SidebarCollection[];
+  user: SidebarUserData;
   /** Fires when a nav link is clicked — used to close the mobile drawer. */
   onNavigate?: () => void;
   /** When set, renders a close button in the header (mobile drawer). */
@@ -37,6 +37,7 @@ function SidebarContent({
   collapsed,
   itemTypes,
   collections,
+  user,
   onNavigate,
   onClose,
 }: SidebarContentProps) {
@@ -177,38 +178,7 @@ function SidebarContent({
 
       {/* User area */}
       <div className="mt-auto shrink-0 border-t border-border p-3">
-        <div
-          className={cn(
-            "flex items-center gap-3",
-            collapsed && "justify-center"
-          )}
-        >
-          <div
-            className="flex size-9 shrink-0 items-center justify-center rounded-full bg-linear-to-br from-violet-500 to-blue-500 text-xs font-semibold text-white"
-            title={collapsed ? currentUser.name : undefined}
-          >
-            {currentUser.avatarInitials}
-          </div>
-          {!collapsed && (
-            <>
-              <div className="min-w-0 flex-1 leading-tight">
-                <p className="truncate text-sm font-medium text-foreground">
-                  {currentUser.name}
-                </p>
-                <p className="truncate text-xs text-muted-foreground">
-                  {currentUser.isPro ? "Pro" : "Free"} · {currentUser.email}
-                </p>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label="Account menu"
-              >
-                <MoreHorizontal className="size-4" />
-              </Button>
-            </>
-          )}
-        </div>
+        <SidebarUser user={user} collapsed={collapsed} />
       </div>
     </div>
   );
@@ -217,9 +187,10 @@ function SidebarContent({
 interface SidebarProps {
   itemTypes: SidebarItemType[];
   collections: SidebarCollection[];
+  user: SidebarUserData;
 }
 
-export function Sidebar({ itemTypes, collections }: SidebarProps) {
+export function Sidebar({ itemTypes, collections, user }: SidebarProps) {
   const { collapsed, mobileOpen, closeMobile } = useSidebar();
 
   // Lock body scroll and allow Escape to close while the mobile drawer is open.
@@ -249,6 +220,7 @@ export function Sidebar({ itemTypes, collections }: SidebarProps) {
           collapsed={collapsed}
           itemTypes={itemTypes}
           collections={collections}
+          user={user}
         />
       </aside>
 
@@ -276,6 +248,7 @@ export function Sidebar({ itemTypes, collections }: SidebarProps) {
           collapsed={false}
           itemTypes={itemTypes}
           collections={collections}
+          user={user}
           onNavigate={closeMobile}
           onClose={closeMobile}
         />
