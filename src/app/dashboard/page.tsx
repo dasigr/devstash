@@ -10,26 +10,36 @@ import { ItemCard } from "@/components/dashboard/ItemCard";
 import type { Metadata } from "next";
 import { connection } from "next/server";
 
-import { pinnedItems, recentItems } from "@/lib/mock-data";
 import {
   getCollectionStats,
   getRecentCollections,
 } from "@/lib/db/collections";
+import {
+  getItemStats,
+  getPinnedItems,
+  getRecentItems,
+} from "@/lib/db/items";
 
 export const metadata: Metadata = {
   title: "Dashboard",
 };
 
-// Show up to 10 of the most recent items (mock order stands in for recency).
-const recent = recentItems.slice(0, 10);
-
 export default async function DashboardPage() {
-  // Read live collection data per request rather than baking it in at build.
+  // Read live data per request rather than baking it in at build.
   await connection();
 
-  const [collections, collectionStats] = await Promise.all([
+  const [
+    collections,
+    collectionStats,
+    pinnedItems,
+    recentItems,
+    itemStats,
+  ] = await Promise.all([
     getRecentCollections(),
     getCollectionStats(),
+    getPinnedItems(),
+    getRecentItems(),
+    getItemStats(),
   ]);
 
   return (
@@ -44,6 +54,8 @@ export default async function DashboardPage() {
             <h1 className="text-2xl font-semibold text-foreground">Dashboard</h1>
 
             <StatsCards
+              itemsCount={itemStats.total}
+              favoriteItemsCount={itemStats.favorites}
               collectionsCount={collectionStats.total}
               favoriteCollectionsCount={collectionStats.favorites}
             />
@@ -62,29 +74,31 @@ export default async function DashboardPage() {
               </div>
             </section>
 
-            {/* Pinned Items */}
-            <section>
-              <SectionHeader
-                icon={<Pin className="size-4 rotate-45" />}
-                title="Pinned Items"
-                count={pinnedItems.length}
-              />
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-                {pinnedItems.map((item) => (
-                  <ItemCard key={item.id} item={item} />
-                ))}
-              </div>
-            </section>
+            {/* Pinned Items — hidden entirely when nothing is pinned. */}
+            {pinnedItems.length > 0 && (
+              <section>
+                <SectionHeader
+                  icon={<Pin className="size-4 rotate-45" />}
+                  title="Pinned Items"
+                  count={pinnedItems.length}
+                />
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+                  {pinnedItems.map((item) => (
+                    <ItemCard key={item.id} item={item} />
+                  ))}
+                </div>
+              </section>
+            )}
 
             {/* Recent Items */}
             <section>
               <SectionHeader
                 icon={<Clock className="size-4" />}
                 title="Recent Items"
-                count={recent.length}
+                count={recentItems.length}
               />
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-                {recent.map((item) => (
+                {recentItems.map((item) => (
                   <ItemCard key={item.id} item={item} />
                 ))}
               </div>
