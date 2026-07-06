@@ -27,3 +27,17 @@ Node version is pinned in `.nvmrc` (v24.18.0); run `nvm use` before installing o
 @AGENTS.md
 
 Per `AGENTS.md`, this is Next.js 16 with breaking changes from earlier versions. Before writing framework code, read the relevant guide in `node_modules/next/dist/docs/` rather than relying on prior Next.js knowledge.
+
+## Neon Database (MCP)
+
+When using the Neon MCP for this project, ALWAYS scope operations to:
+
+- **Project:** `devstash` — projectId `patient-wildflower-11743361` (org `Vercel: Personal`, `org-orange-river-03575016`)
+- **Branch:** `development` — branchId `br-cool-leaf-aotja3d5`
+
+Rules:
+
+- Always pass both `projectId` and `branchId` explicitly on every Neon MCP call (`run_sql`, `run_sql_transaction`, migrations, etc.). Never rely on the default branch.
+- **NEVER touch the `production` branch** (`br-silent-bread-aowzptnx`, the primary/default) unless I explicitly name "production" in my request. This includes reads — default to `development` for everything.
+- Never run destructive SQL (`DROP`, `DELETE`, `TRUNCATE`, `UPDATE`/`INSERT` without explicit instruction) on any branch without asking first.
+- If a request is ambiguous about which branch, assume `development` and say so.
