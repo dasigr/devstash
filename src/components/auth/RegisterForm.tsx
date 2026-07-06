@@ -63,8 +63,8 @@ export function RegisterForm() {
         return;
       }
 
-      // Registered — send them to sign in.
-      router.push("/sign-in");
+      // Registered — send them to sign in; the flag fires a success toast there.
+      router.push("/sign-in?registered=1");
     } catch {
       setFormError("Network error. Please try again.");
     } finally {

@@ -8,9 +8,12 @@ import { Loader2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { toastManager } from "@/lib/toast";
 
 interface SignInFormProps {
   callbackUrl: string;
+  /** Set after a successful registration redirect — fires a welcome toast. */
+  justRegistered?: boolean;
 }
 
 // lucide-react v1 dropped brand icons, so inline the GitHub mark.
@@ -30,7 +33,7 @@ function safeCallbackUrl(url: string): string {
   return /^\/(?![/\\])/.test(url) ? url : "/dashboard";
 }
 
-export function SignInForm({ callbackUrl }: SignInFormProps) {
+export function SignInForm({ callbackUrl, justRegistered }: SignInFormProps) {
   const router = useRouter();
   const target = safeCallbackUrl(callbackUrl);
   const [email, setEmail] = React.useState("");
@@ -38,6 +41,24 @@ export function SignInForm({ callbackUrl }: SignInFormProps) {
   const [error, setError] = React.useState<string | null>(null);
   const [pending, setPending] = React.useState(false);
   const [githubPending, setGithubPending] = React.useState(false);
+
+  // After a successful registration, greet the user once and strip the flag
+  // from the URL so a refresh doesn't replay the toast.
+  const toastShown = React.useRef(false);
+  React.useEffect(() => {
+    if (!justRegistered || toastShown.current) return;
+    toastShown.current = true;
+    toastManager.add({
+      title: "Account created",
+      description: "You can now sign in with your email and password.",
+      timeout: 6000,
+    });
+    // Strip the flag so a refresh doesn't replay the toast.
+    const params = new URLSearchParams(window.location.search);
+    params.delete("registered");
+    const qs = params.toString();
+    window.history.replaceState(null, "", qs ? `/sign-in?${qs}` : "/sign-in");
+  }, [justRegistered]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
