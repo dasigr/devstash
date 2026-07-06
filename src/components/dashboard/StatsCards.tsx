@@ -1,23 +1,36 @@
 import { FolderHeart, LayoutGrid, Library, Star } from "lucide-react";
 
-import { collections, itemTypes, pinnedItems, recentItems } from "@/lib/mock-data";
+import { itemTypes, pinnedItems, recentItems } from "@/lib/mock-data";
 
+// Item stats still come from mock data until items are wired to the database.
 const totalItems = itemTypes.reduce((sum, type) => sum + type.count, 0);
-const totalCollections = collections.length;
 const favoriteItems = [...pinnedItems, ...recentItems].filter(
   (item) => item.isFavorite
 ).length;
-const favoriteCollections = collections.filter((c) => c.isFavorite).length;
 
-const stats = [
-  { label: "Items", value: totalItems, icon: LayoutGrid },
-  { label: "Collections", value: totalCollections, icon: Library },
-  { label: "Favorite Items", value: favoriteItems, icon: Star },
-  { label: "Favorite Collections", value: favoriteCollections, icon: FolderHeart },
-] as const;
+interface StatsCardsProps {
+  /** Total number of collections. */
+  collectionsCount: number;
+  /** Number of favorited collections. */
+  favoriteCollectionsCount: number;
+}
 
 /** Four summary tiles at the top of the dashboard. */
-export function StatsCards() {
+export function StatsCards({
+  collectionsCount,
+  favoriteCollectionsCount,
+}: StatsCardsProps) {
+  const stats = [
+    { label: "Items", value: totalItems, icon: LayoutGrid },
+    { label: "Collections", value: collectionsCount, icon: Library },
+    { label: "Favorite Items", value: favoriteItems, icon: Star },
+    {
+      label: "Favorite Collections",
+      value: favoriteCollectionsCount,
+      icon: FolderHeart,
+    },
+  ] as const;
+
   return (
     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
       {stats.map(({ label, value, icon: Icon }) => (
