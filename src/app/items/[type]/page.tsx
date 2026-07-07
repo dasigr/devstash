@@ -6,7 +6,8 @@ import { Sidebar } from "@/components/dashboard/Sidebar";
 import { SidebarProvider } from "@/components/dashboard/sidebar-context";
 import { TopBar } from "@/components/dashboard/TopBar";
 import { SectionHeader } from "@/components/dashboard/SectionHeader";
-import { ItemCard } from "@/components/dashboard/ItemCard";
+import { ItemCardButton } from "@/components/dashboard/ItemCardButton";
+import { ItemDrawerProvider } from "@/components/dashboard/ItemDrawer";
 import { ItemTypeIcon } from "@/components/dashboard/ItemTypeIcon";
 import { getItemsByType, getSidebarItemTypes } from "@/lib/db/items";
 import { getSidebarCollections } from "@/lib/db/collections";
@@ -52,6 +53,7 @@ export default async function ItemsByTypePage({
 
   return (
     <SidebarProvider>
+      <ItemDrawerProvider>
       <div className="flex h-full min-h-screen bg-background text-foreground">
         <Sidebar
           itemTypes={sidebarItemTypes}
@@ -87,7 +89,7 @@ export default async function ItemsByTypePage({
               {listing.items.length > 0 ? (
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                   {listing.items.map((item) => (
-                    <ItemCard key={item.id} item={item} />
+                    <ItemCardButton key={item.id} item={item} />
                   ))}
                 </div>
               ) : (
@@ -99,6 +101,7 @@ export default async function ItemsByTypePage({
           </main>
         </div>
       </div>
+      </ItemDrawerProvider>
     </SidebarProvider>
   );
 }

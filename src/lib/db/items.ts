@@ -131,6 +131,111 @@ export async function getItemStats(): Promise<{
   return { total, favorites };
 }
 
+/** A collection an item belongs to, for the drawer's "In collections" list. */
+export interface ItemDetailCollection {
+  id: string;
+  name: string;
+  /** Accent color (the collection's default type color, gray when unset). */
+  color: string;
+}
+
+/** Full detail for a single item, shown in the item drawer. */
+export interface ItemDetail {
+  id: string;
+  title: string;
+  description: string | null;
+  contentType: ContentType;
+  /** Raw text content (text types); null for file/url. */
+  content: string | null;
+  /** Optional code language (e.g. "TypeScript"). */
+  language: string | null;
+  url: string | null;
+  fileName: string | null;
+  fileSize: number | null;
+  tags: string[];
+  collections: ItemDetailCollection[];
+  isFavorite: boolean;
+  isPinned: boolean;
+  itemType: ItemTypeSummary;
+  /** Formatted creation date, e.g. "Jun 28, 2026". */
+  createdAt: string;
+  /** Human-friendly relative time, e.g. "2h ago". */
+  updatedAt: string;
+}
+
+// Fallback accent when a collection has no default type set.
+const COLLECTION_FALLBACK_COLOR = "#6b7280";
+
+/**
+ * Full detail for one item, scoped to its owner so a user can only open their
+ * own items (guards against IDOR from the /api/items/[id] route). Returns null
+ * when the item doesn't exist or belongs to someone else.
+ */
+export async function getItemDetail(
+  id: string,
+  userId: string,
+): Promise<ItemDetail | null> {
+  const item = await prisma.item.findFirst({
+    where: { id, userId },
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      contentType: true,
+      content: true,
+      language: true,
+      url: true,
+      fileName: true,
+      fileSize: true,
+      isFavorite: true,
+      isPinned: true,
+      createdAt: true,
+      updatedAt: true,
+      itemType: { select: { id: true, name: true, color: true, icon: true } },
+      tags: { select: { name: true } },
+      collections: {
+        select: {
+          collection: {
+            select: {
+              id: true,
+              name: true,
+              defaultType: { select: { color: true } },
+            },
+          },
+        },
+      },
+    },
+  });
+  if (!item) return null;
+
+  return {
+    id: item.id,
+    title: item.title,
+    description: item.description,
+    contentType: item.contentType,
+    content: item.content,
+    language: item.language,
+    url: item.url,
+    fileName: item.fileName,
+    fileSize: item.fileSize,
+    tags: item.tags.map((tag) => tag.name),
+    collections: item.collections.map(({ collection }) => ({
+      id: collection.id,
+      name: collection.name,
+      color: collection.defaultType?.color ?? COLLECTION_FALLBACK_COLOR,
+    })),
+    isFavorite: item.isFavorite,
+    isPinned: item.isPinned,
+    itemType: item.itemType,
+    createdAt: item.createdAt.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    }),
+    updatedAt: relativeTime(item.updatedAt),
+  };
+}
+
 /** A system item type prepared for the sidebar nav. */
 export interface SidebarItemType {
   id: string;

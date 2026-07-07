@@ -6,7 +6,8 @@ import { TopBar } from "@/components/dashboard/TopBar";
 import { StatsCards } from "@/components/dashboard/StatsCards";
 import { SectionHeader } from "@/components/dashboard/SectionHeader";
 import { CollectionCard } from "@/components/dashboard/CollectionCard";
-import { ItemCard } from "@/components/dashboard/ItemCard";
+import { ItemCardButton } from "@/components/dashboard/ItemCardButton";
+import { ItemDrawerProvider } from "@/components/dashboard/ItemDrawer";
 import type { Metadata } from "next";
 import { connection } from "next/server";
 
@@ -61,6 +62,7 @@ export default async function DashboardPage() {
 
   return (
     <SidebarProvider>
+      <ItemDrawerProvider>
       <div className="flex h-full min-h-screen bg-background text-foreground">
         <Sidebar
           itemTypes={sidebarItemTypes}
@@ -105,7 +107,7 @@ export default async function DashboardPage() {
                 />
                 <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
                   {pinnedItems.map((item) => (
-                    <ItemCard key={item.id} item={item} />
+                    <ItemCardButton key={item.id} item={item} />
                   ))}
                 </div>
               </section>
@@ -120,13 +122,14 @@ export default async function DashboardPage() {
               />
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
                 {recentItems.map((item) => (
-                  <ItemCard key={item.id} item={item} />
+                  <ItemCardButton key={item.id} item={item} />
                 ))}
               </div>
             </section>
           </main>
         </div>
       </div>
+      </ItemDrawerProvider>
     </SidebarProvider>
   );
 }
