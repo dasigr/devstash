@@ -1,16 +1,23 @@
-# Current Feature
+# Current Feature: Items List View
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- What does success look like? -->
+- Create a dynamic route `/items/[type]` (e.g. `/items/snippets`, `/items/notes`)
+- Fetch and display items filtered by the type in the URL
+- Render a responsive grid of `ItemCard` components — two columns on medium, three on large, four on extra-large and up
+- Each card keeps its left border colored by item type
+- Follow existing codebase patterns (server components + Prisma, existing `ItemCard`/db helpers)
 
 ## Notes
 
-<!-- Additional context, constraints, or spec details -->
+- Spec: `context/features/item-list-view-spec.md`
+- The sidebar already links to `/items/<slug>` (pluralized type names like `snippets`, `commands`) — these currently 404, so this route resolves them.
+- Reuse the existing `DashboardItem` shape / `ItemCard` and Prisma db helpers in `src/lib/db/items.ts` where possible.
+- `ItemType` names are stored singular (e.g. `snippet`); slugs in the URL are plural — map between them consistently with the sidebar.
 
 ## History
 

@@ -1,3 +1,5 @@
+import { cache } from "react";
+
 import { prisma } from "@/lib/prisma";
 import type { ContentType } from "@/generated/prisma/client";
 
@@ -148,6 +150,16 @@ export interface SidebarItemType {
 // isPro column, so we derive it from the system type name.
 const PRO_TYPE_NAMES = new Set(["file", "image"]);
 
+/** Display label for a system type, e.g. "snippet" -> "Snippets". */
+function typeLabel(name: string): string {
+  return `${name[0].toUpperCase()}${name.slice(1)}s`;
+}
+
+/** Route slug under /items for a system type, e.g. "snippet" -> "snippets". */
+function typeSlug(name: string): string {
+  return `${name}s`;
+}
+
 // Display order for the sidebar, matching the item-types table in the overview.
 const TYPE_ORDER = [
   "snippet",
@@ -180,11 +192,65 @@ export async function getSidebarItemTypes(): Promise<SidebarItemType[]> {
     .sort((a, b) => TYPE_ORDER.indexOf(a.name) - TYPE_ORDER.indexOf(b.name))
     .map((type) => ({
       id: type.id,
-      name: `${type.name[0].toUpperCase()}${type.name.slice(1)}s`,
-      slug: `${type.name}s`,
+      name: typeLabel(type.name),
+      slug: typeSlug(type.name),
       color: type.color,
       icon: type.icon,
       isPro: PRO_TYPE_NAMES.has(type.name),
       count: type._count.items,
     }));
 }
+
+/** A resolved item type plus its items, for the /items/[type] listing page. */
+export interface ItemTypeListing {
+  type: {
+    id: string;
+    /** Display label, e.g. "Snippets". */
+    name: string;
+    /** Route slug, e.g. "snippets". */
+    slug: string;
+    color: string;
+    icon: string;
+    isPro: boolean;
+  };
+  items: DashboardItem[];
+}
+
+/**
+ * Resolve a plural /items slug (e.g. "snippets") to its system item type and
+ * that type's items, most recently updated first. Returns null when the slug
+ * doesn't match a system type, so the page can render a 404.
+ *
+ * Wrapped in React `cache()` so a single request (generateMetadata + the page)
+ * shares one lookup instead of querying twice.
+ */
+export const getItemsByType = cache(
+  async (slug: string): Promise<ItemTypeListing | null> => {
+    // Slugs are the plural of the singular stored name (snippet -> snippets).
+    const singular = slug.endsWith("s") ? slug.slice(0, -1) : slug;
+
+    const type = await prisma.itemType.findFirst({
+      where: { isSystem: true, name: singular },
+      select: { id: true, name: true, color: true, icon: true },
+    });
+    if (!type) return null;
+
+    const items = await prisma.item.findMany({
+      where: { itemTypeId: type.id },
+      orderBy: { updatedAt: "desc" },
+      select: itemSelect,
+    });
+
+    return {
+      type: {
+        id: type.id,
+        name: typeLabel(type.name),
+        slug: typeSlug(type.name),
+        color: type.color,
+        icon: type.icon,
+        isPro: PRO_TYPE_NAMES.has(type.name),
+      },
+      items: items.map(toDashboardItem),
+    };
+  }
+);
