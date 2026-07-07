@@ -1,16 +1,26 @@
-# Current Feature
+# Current Feature: Profile Page
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- What does success look like? Bullet points. -->
+- Create the profile page at the `/profile` route (protected — requires authentication)
+- Display user info: email, name, avatar (GitHub avatar or initials fallback), account creation date
+- Show usage stats: total items, total collections, and a breakdown by item type (snippets, prompts, notes, commands, links, files, images)
+- Add a **change password** action — visible only to email/password users (not GitHub OAuth)
+- Add a **delete account** action with a confirmation dialog to prevent accidental deletion
+- Follow existing codebase patterns for data fetching (server components + Prisma) and components
 
 ## Notes
 
-<!-- Spec details, constraints, gotchas, references. -->
+- Avatar logic: use the GitHub avatar from OAuth when available; otherwise generate initials from name/email (reuse the existing `UserAvatar` / `getInitials`).
+- Change-password button gating: only for accounts with a `password` hash (email/password sign-up), never for OAuth-only accounts.
+- Delete account must go through a confirmation dialog before destroying data.
+- Item-type breakdown shows a count for each of the seven system types.
+- Route protection: `/profile` is already covered by the proxy `matcher`; keep it protected.
+- A minimal `/profile` page already exists (from the Auth UI Phase 3 feature) — this feature builds it out to the full spec.
 
 ## History
 
