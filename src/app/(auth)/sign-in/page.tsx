@@ -13,16 +13,19 @@ export default async function SignInPage({
     callbackUrl?: string;
     registered?: string;
     verified?: string;
+    reset?: string;
     error?: string;
   }>;
 }) {
-  const { callbackUrl, registered, verified, error } = await searchParams;
+  const { callbackUrl, registered, verified, reset, error } =
+    await searchParams;
   return (
     <SignInForm
       callbackUrl={callbackUrl || "/dashboard"}
       justRegistered={registered === "1" || registered === "ready"}
       awaitingVerification={registered === "1"}
       justVerified={verified === "1"}
+      justReset={reset === "1"}
       verifyError={error === "expired" || error === "invalid" ? error : null}
     />
   );
