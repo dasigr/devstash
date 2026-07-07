@@ -9,12 +9,17 @@ import { createEmailVerificationToken } from "@/lib/db/verification";
 import { sendVerificationEmail } from "@/lib/email";
 import { getBaseUrl } from "@/lib/base-url";
 import { isEmailVerificationEnabled } from "@/lib/features";
+import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
 
 // POST /api/auth/register — email/password sign-up.
 // Validates input (Zod), ensures the email is free, hashes the password with
 // bcrypt, and creates the user. Sign-in itself is handled by the Credentials
 // provider (see src/auth.ts).
 export async function POST(request: Request) {
+  // Rate limit by IP (3 / hour) to curb automated sign-up abuse.
+  const rate = await checkRateLimit("register", getClientIp(request));
+  if (!rate.success) return rateLimitResponse(rate);
+
   let body: unknown;
   try {
     body = await request.json();

@@ -9,6 +9,7 @@ import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { registerSchema } from "@/lib/validations/auth";
+import { toastManager } from "@/lib/toast";
 
 type FieldErrors = Partial<
   Record<"name" | "email" | "password" | "confirmPassword", string[]>
@@ -55,6 +56,13 @@ export function RegisterForm() {
       if (!res.ok) {
         if (res.status === 400 && data?.issues) {
           setFieldErrors(data.issues as FieldErrors);
+        } else if (res.status === 429) {
+          toastManager.add({
+            title: "Too many attempts",
+            description:
+              data?.error ?? "Too many requests. Please try again later.",
+            timeout: 8000,
+          });
         } else {
           setFormError(
             data?.error ?? "Something went wrong. Please try again."

@@ -158,6 +158,15 @@ export function SignInForm({
       if (result.code === "email_not_verified") {
         setUnverifiedEmail(email);
         setError("Please verify your email before signing in.");
+      } else if (result.code === "rate_limited") {
+        const message =
+          "Too many sign-in attempts. Please try again in a few minutes.";
+        setError(message);
+        toastManager.add({
+          title: "Too many attempts",
+          description: message,
+          timeout: 8000,
+        });
       } else {
         setError("Invalid email or password.");
       }
@@ -173,20 +182,38 @@ export function SignInForm({
     if (!unverifiedEmail) return;
     setResendPending(true);
     try {
-      await fetch("/api/auth/resend-verification", {
+      const res = await fetch("/api/auth/resend-verification", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: unverifiedEmail }),
       });
-    } catch {
-      // Non-fatal — the generic toast below still guides the user.
-    } finally {
-      setResendPending(false);
+
+      if (res.status === 429) {
+        const data = await res.json().catch(() => null);
+        toastManager.add({
+          title: "Too many attempts",
+          description:
+            data?.error ??
+            "Too many requests. Please try again in a few minutes.",
+          timeout: 8000,
+        });
+        return;
+      }
+
       toastManager.add({
         title: "Verification email sent",
         description: "Check your inbox for a new verification link.",
         timeout: 6000,
       });
+    } catch {
+      // Non-fatal — guide the user to try again.
+      toastManager.add({
+        title: "Verification email sent",
+        description: "Check your inbox for a new verification link.",
+        timeout: 6000,
+      });
+    } finally {
+      setResendPending(false);
     }
   }
 

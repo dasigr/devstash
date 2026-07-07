@@ -3,17 +3,26 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import GitHub from "next-auth/providers/github";
 import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
+import { headers } from "next/headers";
 
 import authConfig from "@/auth.config";
 import { prisma } from "@/lib/prisma";
 import { credentialsSchema } from "@/lib/validations/auth";
 import { isEmailVerificationEnabled } from "@/lib/features";
+import { checkRateLimit, ipFromHeaders } from "@/lib/rate-limit";
 
 // Thrown when the password is correct but the email hasn't been verified. The
 // `code` surfaces to the client via signIn()'s result so the sign-in UI can
 // show the "verify your email / resend" prompt instead of "invalid password".
 class EmailNotVerifiedError extends CredentialsSignin {
   code = "email_not_verified";
+}
+
+// Thrown when too many sign-in attempts have been made for this IP + email. The
+// `code` lets the sign-in UI show a "too many attempts" message rather than the
+// generic "invalid password".
+class RateLimitError extends CredentialsSignin {
+  code = "rate_limited";
 }
 
 // Full (Node-runtime) auth instance: the edge-safe providers from
@@ -40,6 +49,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!parsed.success) return null;
 
         const { email, password } = parsed.data;
+
+        // Rate limit by IP + email (5 / 15 min) before touching the DB/bcrypt,
+        // so every attempt — right or wrong password — counts against the
+        // brute-force budget. Keyed here (not in a route handler) because the
+        // credentials callback route is owned by NextAuth.
+        const ip = ipFromHeaders(await headers());
+        const rate = await checkRateLimit("login", `${ip}:${email}`);
+        if (!rate.success) throw new RateLimitError();
+
         const user = await prisma.user.findUnique({ where: { email } });
 
         // No user, or an OAuth-only account without a password hash.

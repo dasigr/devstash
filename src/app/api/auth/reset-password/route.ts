@@ -4,11 +4,16 @@ import { z } from "zod";
 
 import { resetPasswordSchema } from "@/lib/validations/auth";
 import { resetPasswordWithToken } from "@/lib/db/password-reset";
+import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
 
 // POST /api/auth/reset-password — complete a password reset. Validates the new
 // password, hashes it (bcrypt, 12 rounds — matching register/seed), then
 // consumes the single-use token and updates the user's password.
 export async function POST(request: Request) {
+  // Rate limit by IP (5 / 15 min) to curb token brute-forcing.
+  const rate = await checkRateLimit("resetPassword", getClientIp(request));
+  if (!rate.success) return rateLimitResponse(rate);
+
   let body: unknown;
   try {
     body = await request.json();
