@@ -23,6 +23,21 @@ export const emailSchema = z.object({
   email: z.string().trim().toLowerCase().email("Enter a valid email address"),
 });
 
+// Forgot-password request is just an email; alias emailSchema for a clear name.
+export const forgotPasswordSchema = emailSchema;
+
+export const resetPasswordSchema = z
+  .object({
+    token: z.string().min(1, "Reset token is required"),
+    password: z.string().min(8, "Password must be at least 8 characters"),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
+
 export type CredentialsInput = z.infer<typeof credentialsSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type EmailInput = z.infer<typeof emailSchema>;
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;

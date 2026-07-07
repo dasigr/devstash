@@ -1,16 +1,33 @@
-# Current Feature
+# Current Feature: Forgot Password
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- What does success look like? Bullet points. -->
+- Add a **"Forgot password?"** link on the sign-in page (`/sign-in`).
+- Add a **`/forgot-password`** page with a form to request a reset (email input).
+- Add **`POST /api/auth/forgot-password`** — issues a password-reset token and emails a reset link. Always returns a **generic** response (no account enumeration), mirroring the resend-verification endpoint.
+- Add a **`/reset-password`** page that reads the token from the URL and shows a new-password + confirm form.
+- Add **`POST /api/auth/reset-password`** — verifies the token (single-use, expiry-checked), hashes the new password (bcryptjs, 12 rounds), and updates `User.password`.
+- **Reuse the existing `VerificationToken` model** for reset tokens (no schema/migration), keeping reset tokens distinct from email-verification tokens.
+- Send the reset email via **Resend** (`src/lib/email.ts`), matching the existing verification-email pattern.
+- Surface success/failure with the existing **toast** system and inline form errors.
 
 ## Notes
 
-<!-- Spec details, constraints, gotchas, references. -->
+- **Token-type collision:** email verification already stores `VerificationToken` rows keyed by `identifier = email`. Password reset must not clobber or be confused with those. Namespace the reset `identifier` (e.g. `password-reset:<email>`) so both flows can coexist in the same table. Decide during implementation.
+- **Reuse existing infra:**
+  - `src/lib/db/verification.ts` — pattern for `createEmailVerificationToken` / `verifyEmailToken` (delete prior tokens for identifier, `randomBytes(32)` hex, expiry, single-use consume). Add analogous reset helpers (e.g. `createPasswordResetToken` / `consumePasswordResetToken`) or a shared internal.
+  - `src/lib/email.ts` — add `sendPasswordResetEmail({ to, resetUrl })` alongside `sendVerificationEmail`; sends from `onboarding@resend.dev`.
+  - `src/lib/base-url.ts` — `getBaseUrl(request)` for absolute reset links.
+  - `src/lib/validations/auth.ts` — add Zod schemas (`forgotPasswordSchema` email-only; `resetPasswordSchema` token + password + confirm, reuse the min-8 password + match rules from `registerSchema`).
+- **Token expiry:** verification tokens use 24h; password-reset tokens should be **shorter** (e.g. 1h) per common security practice. Confirm during implementation.
+- **OAuth-only accounts:** an account with no `password` hash (GitHub-only) requesting a reset — return the same generic response (no enumeration); do not create a password on a passwordless account unless intended.
+- **Auth pages** live under the `(auth)` route group with the shared centered `layout.tsx`; `/forgot-password` and `/reset-password` belong there.
+- **No migration** — reuses `VerificationToken` + `User.password`. (Per project policy: never `db push`; only `migrate dev` if a schema change were needed — it isn't here.)
+- After reset success, redirect to `/sign-in` with a query flag (like `?registered=1` / `?verified=1`) so the sign-in page can fire a confirmation toast.
 
 ## History
 

@@ -23,6 +23,8 @@ interface SignInFormProps {
   justVerified?: boolean;
   /** Set when a verification link was expired/invalid — fires a toast. */
   verifyError?: "expired" | "invalid" | null;
+  /** Set after a successful password reset redirect — fires a toast. */
+  justReset?: boolean;
 }
 
 // lucide-react v1 dropped brand icons, so inline the GitHub mark.
@@ -48,6 +50,7 @@ export function SignInForm({
   awaitingVerification,
   justVerified,
   verifyError,
+  justReset,
 }: SignInFormProps) {
   const router = useRouter();
   const target = safeCallbackUrl(callbackUrl);
@@ -97,6 +100,13 @@ export function SignInForm({
         timeout: 6000,
       };
       stripKey = "verified";
+    } else if (justReset) {
+      toast = {
+        title: "Password reset",
+        description: "You can now sign in with your new password.",
+        timeout: 6000,
+      };
+      stripKey = "reset";
     } else if (verifyError) {
       toast = {
         title: "Verification failed",
@@ -124,7 +134,7 @@ export function SignInForm({
     // would cancel the toast while the guard blocks it from rescheduling. The
     // ref already guarantees the toast is scheduled exactly once.
     setTimeout(() => toastManager.add(toast), 0);
-  }, [justRegistered, awaitingVerification, justVerified, verifyError]);
+  }, [justRegistered, awaitingVerification, justVerified, verifyError, justReset]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -234,12 +244,20 @@ export function SignInForm({
         </div>
 
         <div className="space-y-1.5">
-          <label
-            htmlFor="password"
-            className="text-sm font-medium text-foreground"
-          >
-            Password
-          </label>
+          <div className="flex items-center justify-between">
+            <label
+              htmlFor="password"
+              className="text-sm font-medium text-foreground"
+            >
+              Password
+            </label>
+            <Link
+              href="/forgot-password"
+              className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+            >
+              Forgot password?
+            </Link>
+          </div>
           <Input
             id="password"
             type="password"
