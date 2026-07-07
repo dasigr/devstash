@@ -6,6 +6,7 @@ import { createEmailVerificationToken } from "@/lib/db/verification";
 import { sendVerificationEmail } from "@/lib/email";
 import { getBaseUrl } from "@/lib/base-url";
 import { isEmailVerificationEnabled } from "@/lib/features";
+import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
 
 // POST /api/auth/resend-verification — re-send the verification email for an
 // unverified credentials account. Always returns a generic success so the
@@ -32,6 +33,10 @@ export async function POST(request: Request) {
   if (!parsed.success) return generic;
 
   const { email } = parsed.data;
+
+  // Rate limit by IP + email (3 / 15 min) to curb verification-email flooding.
+  const rate = await checkRateLimit("resendVerification", `${getClientIp(request)}:${email}`);
+  if (!rate.success) return rateLimitResponse(rate);
 
   try {
     const user = await prisma.user.findUnique({

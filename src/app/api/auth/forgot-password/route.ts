@@ -5,6 +5,7 @@ import { forgotPasswordSchema } from "@/lib/validations/auth";
 import { createPasswordResetToken } from "@/lib/db/password-reset";
 import { sendPasswordResetEmail } from "@/lib/email";
 import { getBaseUrl } from "@/lib/base-url";
+import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rate-limit";
 
 // POST /api/auth/forgot-password — request a password-reset link. Always
 // returns a generic success so the response never reveals whether an email
@@ -14,6 +15,11 @@ export async function POST(request: Request) {
     success: true,
     message: "If an account exists for that email, we've sent a reset link.",
   });
+
+  // Rate limit by IP (3 / hour) to curb reset-email flooding. A 429 keyed on
+  // the requester's IP reveals nothing about which accounts exist.
+  const rate = await checkRateLimit("forgotPassword", getClientIp(request));
+  if (!rate.success) return rateLimitResponse(rate);
 
   let body: unknown;
   try {

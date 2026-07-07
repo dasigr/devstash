@@ -8,6 +8,7 @@ import { Loader2 } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { forgotPasswordSchema } from "@/lib/validations/auth";
+import { toastManager } from "@/lib/toast";
 
 export function ForgotPasswordForm() {
   const [email, setEmail] = React.useState("");
@@ -31,12 +32,25 @@ export function ForgotPasswordForm() {
     setPending(true);
     try {
       // The endpoint always returns a generic success (no account enumeration),
-      // so we show the same confirmation regardless of the outcome.
-      await fetch("/api/auth/forgot-password", {
+      // so we show the same confirmation regardless of the outcome — except a
+      // 429, where we surface the rate-limit message instead of a false "sent".
+      const res = await fetch("/api/auth/forgot-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(parsed.data),
       });
+
+      if (res.status === 429) {
+        const data = await res.json().catch(() => null);
+        toastManager.add({
+          title: "Too many attempts",
+          description:
+            data?.error ?? "Too many requests. Please try again later.",
+          timeout: 8000,
+        });
+        return;
+      }
+
       setSubmitted(true);
     } catch {
       setError("Network error. Please try again.");
