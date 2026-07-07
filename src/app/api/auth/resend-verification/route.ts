@@ -5,6 +5,7 @@ import { emailSchema } from "@/lib/validations/auth";
 import { createEmailVerificationToken } from "@/lib/db/verification";
 import { sendVerificationEmail } from "@/lib/email";
 import { getBaseUrl } from "@/lib/base-url";
+import { isEmailVerificationEnabled } from "@/lib/features";
 
 // POST /api/auth/resend-verification — re-send the verification email for an
 // unverified credentials account. Always returns a generic success so the
@@ -15,6 +16,10 @@ export async function POST(request: Request) {
     success: true,
     message: "If that account needs verification, we've sent a new link.",
   });
+
+  // Nothing to verify when the feature is off — return the same generic
+  // response so the endpoint's behavior is indistinguishable either way.
+  if (!isEmailVerificationEnabled()) return generic;
 
   let body: unknown;
   try {

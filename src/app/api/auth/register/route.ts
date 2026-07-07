@@ -8,6 +8,7 @@ import { registerSchema } from "@/lib/validations/auth";
 import { createEmailVerificationToken } from "@/lib/db/verification";
 import { sendVerificationEmail } from "@/lib/email";
 import { getBaseUrl } from "@/lib/base-url";
+import { isEmailVerificationEnabled } from "@/lib/features";
 
 // POST /api/auth/register — email/password sign-up.
 // Validates input (Zod), ensures the email is free, hashes the password with
@@ -37,6 +38,7 @@ export async function POST(request: Request) {
   }
 
   const { name, email, password } = parsed.data;
+  const verificationEnabled = isEmailVerificationEnabled();
 
   try {
     const existing = await prisma.user.findUnique({ where: { email } });
@@ -53,18 +55,29 @@ export async function POST(request: Request) {
       select: { id: true, name: true, email: true },
     });
 
-    // Send the verification email. A delivery failure shouldn't fail the
-    // registration itself — the account exists and the user can request a
-    // fresh link via "resend verification" — so we log and continue.
-    try {
-      const token = await createEmailVerificationToken(email);
-      const verifyUrl = `${getBaseUrl(request)}/api/auth/verify-email?token=${token}`;
-      await sendVerificationEmail({ to: email, verifyUrl });
-    } catch (emailError) {
-      console.error("Failed to send verification email:", emailError);
+    // Send the verification email (only when the feature is enabled). A
+    // delivery failure shouldn't fail the registration itself — the account
+    // exists and the user can request a fresh link via "resend verification"
+    // — so we log and continue. When disabled, we leave `emailVerified` null;
+    // sign-in works because the gate in src/auth.ts is skipped.
+    if (verificationEnabled) {
+      try {
+        const token = await createEmailVerificationToken(email);
+        const verifyUrl = `${getBaseUrl(request)}/api/auth/verify-email?token=${token}`;
+        await sendVerificationEmail({ to: email, verifyUrl });
+      } catch (emailError) {
+        console.error("Failed to send verification email:", emailError);
+      }
     }
 
-    return NextResponse.json({ success: true, data: user }, { status: 201 });
+    return NextResponse.json(
+      {
+        success: true,
+        data: user,
+        verificationRequired: verificationEnabled,
+      },
+      { status: 201 },
+    );
   } catch (error) {
     // Unique-constraint race: a concurrent request registered this email
     // between our existence check and create.

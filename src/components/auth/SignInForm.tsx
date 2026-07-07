@@ -14,6 +14,11 @@ interface SignInFormProps {
   callbackUrl: string;
   /** Set after a successful registration redirect — fires a welcome toast. */
   justRegistered?: boolean;
+  /**
+   * Whether the just-registered account still needs email verification. Drives
+   * the registration toast copy ("check your email" vs "you can sign in now").
+   */
+  awaitingVerification?: boolean;
   /** Set after a successful email-verification redirect — fires a toast. */
   justVerified?: boolean;
   /** Set when a verification link was expired/invalid — fires a toast. */
@@ -40,6 +45,7 @@ function safeCallbackUrl(url: string): string {
 export function SignInForm({
   callbackUrl,
   justRegistered,
+  awaitingVerification,
   justVerified,
   verifyError,
 }: SignInFormProps) {
@@ -78,9 +84,10 @@ export function SignInForm({
     if (justRegistered) {
       toast = {
         title: "Account created",
-        description:
-          "Check your email for a verification link before signing in.",
-        timeout: 8000,
+        description: awaitingVerification
+          ? "Check your email for a verification link before signing in."
+          : "You can now sign in with your email and password.",
+        timeout: awaitingVerification ? 8000 : 6000,
       };
       stripKey = "registered";
     } else if (justVerified) {
@@ -117,7 +124,7 @@ export function SignInForm({
     // would cancel the toast while the guard blocks it from rescheduling. The
     // ref already guarantees the toast is scheduled exactly once.
     setTimeout(() => toastManager.add(toast), 0);
-  }, [justRegistered, justVerified, verifyError]);
+  }, [justRegistered, awaitingVerification, justVerified, verifyError]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();

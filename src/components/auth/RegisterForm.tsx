@@ -63,8 +63,12 @@ export function RegisterForm() {
         return;
       }
 
-      // Registered — send them to sign in; the flag fires a success toast there.
-      router.push("/sign-in?registered=1");
+      // Registered — send them to sign in; a success toast fires there. The
+      // `registered` value tells the sign-in page which message to show:
+      // "check your email" when verification is required, or "you can now
+      // sign in" when it's disabled.
+      const needsVerification = data?.verificationRequired === true;
+      router.push(`/sign-in?registered=${needsVerification ? "1" : "ready"}`);
     } catch {
       setFormError("Network error. Please try again.");
     } finally {
