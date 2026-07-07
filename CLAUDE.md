@@ -17,8 +17,10 @@ Read the following to get the full context of the project:
 - `npm run build` — production build
 - `npm run start` — serve the production build
 - `npm run lint` — run ESLint
+- `npm run test` — run the Vitest unit tests once
+- `npm run test:watch` — run Vitest in watch mode
 
-No test runner is configured yet.
+Unit tests use **Vitest** and are scoped to **server actions and utilities only** (`src/actions/*`, `src/lib/*`) — not components/pages. Colocate tests as `*.test.ts` next to the code under test.
 
 Node version is pinned in `.nvmrc` (v24.18.0); run `nvm use` before installing or running.
 

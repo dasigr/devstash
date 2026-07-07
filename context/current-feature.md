@@ -2,15 +2,24 @@
 
 ## Status
 
-Not Started
+In Progress — Vitest Unit Testing Setup
 
 ## Goals
 
-<!-- What does success look like? -->
+Set up **Vitest** as the unit test runner, scoped to **server actions and utilities only** — not components. Establish the foundation, conventions, and npm scripts so future features can add tests easily.
+
+- Install and configure Vitest (minimal setup: no jsdom / testing-library / React plugin, since we don't test components).
+- Node test environment; resolve the `@/*` path alias via `vite-tsconfig-paths`.
+- Colocated `*.test.ts` files next to the code under test.
+- Seed example tests for existing pure utilities (`features`, `base-url`, `validations/auth`).
+- Add npm scripts (`test`, `test:watch`).
+- Update the workflow docs to include the testing step.
 
 ## Notes
 
-<!-- Additional context, constraints, or spec details -->
+- **Scope:** server actions (`src/actions/*`) and utilities (`src/lib/*`). Components, pages, and layouts are intentionally out of scope — cover those with E2E later if needed.
+- Tests must run without a database or network — pure functions, or DB/service modules with their dependencies mocked.
+- `npm run test` runs once (CI/build-friendly); `npm run test:watch` for local dev.
 
 ## History
 
