@@ -19,5 +19,10 @@ export const registerSchema = credentialsSchema
     path: ["confirmPassword"],
   });
 
+export const emailSchema = z.object({
+  email: z.string().trim().toLowerCase().email("Enter a valid email address"),
+});
+
 export type CredentialsInput = z.infer<typeof credentialsSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;
+export type EmailInput = z.infer<typeof emailSchema>;

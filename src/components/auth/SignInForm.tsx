@@ -14,6 +14,10 @@ interface SignInFormProps {
   callbackUrl: string;
   /** Set after a successful registration redirect — fires a welcome toast. */
   justRegistered?: boolean;
+  /** Set after a successful email-verification redirect — fires a toast. */
+  justVerified?: boolean;
+  /** Set when a verification link was expired/invalid — fires a toast. */
+  verifyError?: "expired" | "invalid" | null;
 }
 
 // lucide-react v1 dropped brand icons, so inline the GitHub mark.
@@ -33,7 +37,12 @@ function safeCallbackUrl(url: string): string {
   return /^\/(?![/\\])/.test(url) ? url : "/dashboard";
 }
 
-export function SignInForm({ callbackUrl, justRegistered }: SignInFormProps) {
+export function SignInForm({
+  callbackUrl,
+  justRegistered,
+  justVerified,
+  verifyError,
+}: SignInFormProps) {
   const router = useRouter();
   const target = safeCallbackUrl(callbackUrl);
   const [email, setEmail] = React.useState("");
@@ -41,28 +50,79 @@ export function SignInForm({ callbackUrl, justRegistered }: SignInFormProps) {
   const [error, setError] = React.useState<string | null>(null);
   const [pending, setPending] = React.useState(false);
   const [githubPending, setGithubPending] = React.useState(false);
+  // Email of an account that signed in with the right password but isn't yet
+  // verified — drives the "resend verification email" prompt.
+  const [unverifiedEmail, setUnverifiedEmail] = React.useState<string | null>(
+    null,
+  );
+  const [resendPending, setResendPending] = React.useState(false);
 
-  // After a successful registration, greet the user once and strip the flag
-  // from the URL so a refresh doesn't replay the toast.
+  // Fire a one-time toast for whichever status flag brought the user here
+  // (registration, verification success, or a bad verification link), then
+  // strip the flag from the URL so a refresh doesn't replay the toast.
+  //
+  // The toast is added via setTimeout so it lands *after* this commit's passive
+  // effects flush. The <Toaster> provider subscribes to the shared toast
+  // manager in its own passive effect; on a cold full-page load (e.g. arriving
+  // from the email-verification redirect) this deep-child effect runs before
+  // that root-level parent effect, and toastManager.add() has no queue — so an
+  // immediate call would be dropped. Registration escaped this only because
+  // it's a warm client navigation where the provider is already subscribed.
   const toastShown = React.useRef(false);
   React.useEffect(() => {
-    if (!justRegistered || toastShown.current) return;
+    if (toastShown.current) return;
+
+    let toast: Parameters<typeof toastManager.add>[0] | null = null;
+    let stripKey: string | null = null;
+
+    if (justRegistered) {
+      toast = {
+        title: "Account created",
+        description:
+          "Check your email for a verification link before signing in.",
+        timeout: 8000,
+      };
+      stripKey = "registered";
+    } else if (justVerified) {
+      toast = {
+        title: "Email verified",
+        description: "You can now sign in with your email and password.",
+        timeout: 6000,
+      };
+      stripKey = "verified";
+    } else if (verifyError) {
+      toast = {
+        title: "Verification failed",
+        description:
+          verifyError === "expired"
+            ? "That link has expired. Sign in to send yourself a new one."
+            : "That link is invalid or has already been used.",
+        timeout: 8000,
+      };
+      stripKey = "error";
+    }
+
+    if (!toast || !stripKey) return;
     toastShown.current = true;
-    toastManager.add({
-      title: "Account created",
-      description: "You can now sign in with your email and password.",
-      timeout: 6000,
-    });
+
     // Strip the flag so a refresh doesn't replay the toast.
     const params = new URLSearchParams(window.location.search);
-    params.delete("registered");
+    params.delete(stripKey);
     const qs = params.toString();
     window.history.replaceState(null, "", qs ? `/sign-in?${qs}` : "/sign-in");
-  }, [justRegistered]);
+
+    // No cleanup/clearTimeout: under React StrictMode the effect runs
+    // mount → unmount → remount, and the `toastShown` ref persists across that
+    // remount (same fiber), so clearing the timer on the throwaway unmount
+    // would cancel the toast while the guard blocks it from rescheduling. The
+    // ref already guarantees the toast is scheduled exactly once.
+    setTimeout(() => toastManager.add(toast), 0);
+  }, [justRegistered, justVerified, verifyError]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setUnverifiedEmail(null);
 
     if (!email || !password) {
       setError("Enter your email and password.");
@@ -78,13 +138,39 @@ export function SignInForm({ callbackUrl, justRegistered }: SignInFormProps) {
     setPending(false);
 
     if (result?.error) {
-      setError("Invalid email or password.");
+      if (result.code === "email_not_verified") {
+        setUnverifiedEmail(email);
+        setError("Please verify your email before signing in.");
+      } else {
+        setError("Invalid email or password.");
+      }
       return;
     }
 
     // Session cookie is set; navigate and refresh server components.
     router.push(target);
     router.refresh();
+  }
+
+  async function handleResend() {
+    if (!unverifiedEmail) return;
+    setResendPending(true);
+    try {
+      await fetch("/api/auth/resend-verification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: unverifiedEmail }),
+      });
+    } catch {
+      // Non-fatal — the generic toast below still guides the user.
+    } finally {
+      setResendPending(false);
+      toastManager.add({
+        title: "Verification email sent",
+        description: "Check your inbox for a new verification link.",
+        timeout: 6000,
+      });
+    }
   }
 
   return (
@@ -162,6 +248,20 @@ export function SignInForm({ callbackUrl, justRegistered }: SignInFormProps) {
           <p role="alert" className="text-sm text-destructive">
             {error}
           </p>
+        )}
+
+        {unverifiedEmail && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="w-full"
+            disabled={resendPending}
+            onClick={handleResend}
+          >
+            {resendPending && <Loader2 className="animate-spin" />}
+            Resend verification email
+          </Button>
         )}
 
         <Button

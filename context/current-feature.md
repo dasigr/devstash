@@ -1,16 +1,29 @@
-# Current Feature
+# Current Feature: Email Verification on Register
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- What does success look like? Bullet points. -->
+- New users who register with email/password must verify their email before they can sign in.
+- On successful registration, send a verification email via **Resend** containing a unique, expiring link.
+- Clicking the link marks the account verified (`User.emailVerified` set) and lands the user on sign-in with a success confirmation.
+- The Credentials sign-in flow rejects unverified accounts with a clear, actionable message (and a way to resend the email).
+- GitHub OAuth accounts remain unaffected (already trusted/verified by the provider).
 
 ## Notes
 
-<!-- Spec details, constraints, gotchas, references. -->
+- **Provider:** Resend. `RESEND_API_KEY` is already present in `.env` (and `.env.example`). Install the `resend` SDK. **From address:** use `onboarding@resend.dev` (Resend's shared dev sender — no domain verification needed). App base URL comes from `NEXTAUTH_URL`/`AUTH_URL`.
+- **Scope decision:** send-on-register **plus** a "resend verification email" action for unverified users.
+- **Current flow (to change):** `POST /api/auth/register` creates the user and returns 201; `RegisterForm` redirects to `/sign-in?registered=1` (toast). `src/auth.ts` `authorize` currently signs a user in on correct password with no verification check.
+- **Token storage:** the schema already has NextAuth's `VerificationToken` model (`identifier`, `token`, `expires`) — reuse it for the verification link rather than adding a column. Generate a cryptographically random token, store a hash (or the token) with an expiry (e.g. 24h), email the link `/{verify-route}?token=...`.
+- **Verify route:** add an endpoint/page (e.g. `GET /api/auth/verify-email` or `/verify-email`) that looks up the token, checks expiry, sets `User.emailVerified = now()`, deletes the token, and redirects to `/sign-in?verified=1`. Handle invalid/expired tokens gracefully.
+- **Sign-in gating:** update `authorize` in `src/auth.ts` to reject users with `emailVerified === null` (email/password only). Surface a distinct error so the UI can prompt "check your email / resend".
+- **Resend action (in scope):** a "resend verification email" flow for unverified users — e.g. the sign-in error for an unverified account surfaces a "resend verification email" button/link that hits an endpoint (e.g. `POST /api/auth/resend-verification`), which re-issues a fresh token (invalidating the prior one) and re-sends via Resend. Return generically (don't reveal whether an email exists / is already verified) to avoid enumeration.
+- **Toast:** reuse the existing Base UI toast (`toastManager`) for the "verified — you can now sign in" and "check your email" confirmations, consistent with the registration-success toast.
+- **Seeded user:** `test-engineer@a5project.com` already has `emailVerified` set, so it keeps working.
+- Follow the workflow: branch `feature/email-verification`, build + lint clean, verify against the Neon **development** branch, ask before committing. No `db push` — the `VerificationToken` model already exists, so likely **no migration** needed.
 
 ## History
 
