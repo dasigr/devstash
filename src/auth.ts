@@ -7,6 +7,7 @@ import bcrypt from "bcryptjs";
 import authConfig from "@/auth.config";
 import { prisma } from "@/lib/prisma";
 import { credentialsSchema } from "@/lib/validations/auth";
+import { isEmailVerificationEnabled } from "@/lib/features";
 
 // Thrown when the password is correct but the email hasn't been verified. The
 // `code` surfaces to the client via signIn()'s result so the sign-in UI can
@@ -47,8 +48,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const passwordMatches = await bcrypt.compare(password, user.password);
         if (!passwordMatches) return null;
 
-        // Correct credentials, but the email must be verified first.
-        if (!user.emailVerified) throw new EmailNotVerifiedError();
+        // Correct credentials, but the email must be verified first — only
+        // enforced when the verification feature is enabled.
+        if (isEmailVerificationEnabled() && !user.emailVerified) {
+          throw new EmailNotVerifiedError();
+        }
 
         return {
           id: user.id,

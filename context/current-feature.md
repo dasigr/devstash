@@ -1,16 +1,38 @@
-# Current Feature
+# Current Feature: Toggle Email Verification
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- What does success look like? Bullet points. -->
+- Add a single, easy-to-flip switch that turns the entire email-verification requirement on or off.
+- When **disabled**: registration succeeds without sending a verification email, and email/password sign-in is **not** blocked by an unverified address (the flag alone bypasses the check — `emailVerified` is left `null`, not stamped).
+- When **enabled**: behavior is unchanged from today (send verification email on register, block unverified sign-in via `EmailNotVerifiedError`).
+- No schema/migration change — reuse the existing `User.emailVerified` field.
+- Default the flag to a safe value for the current situation (verification **off**, since no Resend domain is linked and only `dasig.rg@a5project.com` can receive mail).
 
 ## Notes
 
-<!-- Spec details, constraints, gotchas, references. -->
+**Why now:** Resend has no verified domain, so `onboarding@resend.dev` can only deliver to the account owner's address. Every other registrant is stuck unverified and cannot sign in. A toggle lets us disable the gate until a domain is wired up.
+
+**Proposed approach — env variable (recommended):**
+
+- Add a boolean flag, e.g. `EMAIL_VERIFICATION_ENABLED` (default `false`), read through a tiny helper (e.g. `src/lib/features.ts` → `isEmailVerificationEnabled()`) so parsing lives in one place. Document it in `.env` and `.env.example`.
+- The flag must be readable from **both** the Node runtime (`src/auth.ts`, register route) and, if referenced there, the edge/proxy bundle — keep it to a plain `process.env` read, no Prisma/imports that would bloat the edge slice.
+
+**Touch points to gate on the flag:**
+
+1. `authorize` in `src/auth.ts` — skip the `emailVerified === null` → `EmailNotVerifiedError` check when disabled.
+2. `POST /api/auth/register` — when disabled, skip issuing the token + `sendVerificationEmail`. **Leave `emailVerified` null** (do not stamp it) — sign-in works purely because the flag bypasses the gate. When enabled, keep today's flow.
+3. `POST /api/auth/resend-verification` — when disabled, no-op/short-circuit (still return the existing generic response to avoid enumeration).
+4. `SignInForm` — the "Resend verification email" affordance only ever appears on an `email_not_verified` code, which won't be thrown while disabled, so likely no change needed; verify no UI dead-ends.
+
+**Open question / alternatives:** Env var is simplest and needs no DB. Alternative would be a DB-backed app setting (overkill for one boolean, adds a table/query) or a build-time constant (can't flip without redeploy). Recommend the env var unless you want runtime toggling without a redeploy.
+
+**Constraint:** GitHub OAuth path is unaffected either way — this only concerns credentials (email/password) accounts.
+
+**Accepted tradeoff:** since accounts registered while the flag is off keep `emailVerified = null`, re-enabling verification later would retroactively block those users at sign-in until they verify (they can use the existing "Resend verification email" flow). Chosen deliberately over stamping `emailVerified` on register.
 
 ## History
 

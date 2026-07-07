@@ -20,7 +20,8 @@ export default async function SignInPage({
   return (
     <SignInForm
       callbackUrl={callbackUrl || "/dashboard"}
-      justRegistered={registered === "1"}
+      justRegistered={registered === "1" || registered === "ready"}
+      awaitingVerification={registered === "1"}
       justVerified={verified === "1"}
       verifyError={error === "expired" || error === "invalid" ? error : null}
     />
