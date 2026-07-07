@@ -9,13 +9,20 @@ export const metadata: Metadata = {
 export default async function SignInPage({
   searchParams,
 }: {
-  searchParams: Promise<{ callbackUrl?: string; registered?: string }>;
+  searchParams: Promise<{
+    callbackUrl?: string;
+    registered?: string;
+    verified?: string;
+    error?: string;
+  }>;
 }) {
-  const { callbackUrl, registered } = await searchParams;
+  const { callbackUrl, registered, verified, error } = await searchParams;
   return (
     <SignInForm
       callbackUrl={callbackUrl || "/dashboard"}
       justRegistered={registered === "1"}
+      justVerified={verified === "1"}
+      verifyError={error === "expired" || error === "invalid" ? error : null}
     />
   );
 }

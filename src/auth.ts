@@ -1,4 +1,4 @@
-import NextAuth from "next-auth";
+import NextAuth, { CredentialsSignin } from "next-auth";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import GitHub from "next-auth/providers/github";
 import Credentials from "next-auth/providers/credentials";
@@ -7,6 +7,13 @@ import bcrypt from "bcryptjs";
 import authConfig from "@/auth.config";
 import { prisma } from "@/lib/prisma";
 import { credentialsSchema } from "@/lib/validations/auth";
+
+// Thrown when the password is correct but the email hasn't been verified. The
+// `code` surfaces to the client via signIn()'s result so the sign-in UI can
+// show the "verify your email / resend" prompt instead of "invalid password".
+class EmailNotVerifiedError extends CredentialsSignin {
+  code = "email_not_verified";
+}
 
 // Full (Node-runtime) auth instance: the edge-safe providers from
 // auth.config.ts combined with the Prisma adapter. JWT session strategy is
@@ -39,6 +46,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         const passwordMatches = await bcrypt.compare(password, user.password);
         if (!passwordMatches) return null;
+
+        // Correct credentials, but the email must be verified first.
+        if (!user.emailVerified) throw new EmailNotVerifiedError();
 
         return {
           id: user.id,
