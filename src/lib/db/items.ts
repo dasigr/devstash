@@ -1,7 +1,8 @@
 import { cache } from "react";
 
 import { prisma } from "@/lib/prisma";
-import type { ContentType } from "@/generated/prisma/client";
+import type { ContentType, Prisma } from "@/generated/prisma/client";
+import type { UpdateItemInput } from "@/lib/validations/items";
 
 /** Minimal item-type shape an item card needs (badge icon + accent color). */
 export interface ItemTypeSummary {
@@ -234,6 +235,48 @@ export async function getItemDetail(
     }),
     updatedAt: relativeTime(item.updatedAt),
   };
+}
+
+/**
+ * Update one item's editable fields, scoped to its owner (guards against IDOR),
+ * and return its refreshed ItemDetail so the drawer needn't re-fetch. Returns
+ * null when the item doesn't exist or belongs to someone else.
+ *
+ * Only fields present on `data` are written — an undefined field is left as-is;
+ * a null field is cleared. Tags are fully replaced: existing links are dropped
+ * (`set: []`) and the given names are connected, creating any that don't exist.
+ */
+export async function updateItem(
+  id: string,
+  userId: string,
+  data: UpdateItemInput,
+): Promise<ItemDetail | null> {
+  // Ownership check — item.update keys off the unique id alone, so we can't
+  // scope the write by userId directly.
+  const owned = await prisma.item.findFirst({
+    where: { id, userId },
+    select: { id: true },
+  });
+  if (!owned) return null;
+
+  const updateData: Prisma.ItemUpdateInput = {
+    title: data.title,
+    tags: {
+      set: [],
+      connectOrCreate: data.tags.map((name) => ({
+        where: { name },
+        create: { name },
+      })),
+    },
+  };
+  if (data.description !== undefined) updateData.description = data.description;
+  if (data.content !== undefined) updateData.content = data.content;
+  if (data.language !== undefined) updateData.language = data.language;
+  if (data.url !== undefined) updateData.url = data.url;
+
+  await prisma.item.update({ where: { id }, data: updateData });
+
+  return getItemDetail(id, userId);
 }
 
 /** A system item type prepared for the sidebar nav. */

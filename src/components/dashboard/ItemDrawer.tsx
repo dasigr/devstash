@@ -9,6 +9,7 @@ import {
   ItemDrawerDetail,
   ItemDrawerSkeleton,
 } from "@/components/dashboard/ItemDrawerDetail";
+import { ItemDrawerEdit } from "@/components/dashboard/ItemDrawerEdit";
 
 /**
  * Client wrapper that provides the item drawer to the (server) pages. Children
@@ -25,6 +26,7 @@ export function ItemDrawerProvider({
   const [item, setItem] = useState<ItemDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
+  const [editing, setEditing] = useState(false);
   // Tracks the latest request so an earlier, slower fetch can't clobber a newer
   // one when the user opens items in quick succession.
   const requestId = useRef(0);
@@ -33,6 +35,7 @@ export function ItemDrawerProvider({
     setOpen(true);
     setItem(null);
     setError(false);
+    setEditing(false);
     setLoading(true);
 
     const reqId = ++requestId.current;
@@ -57,7 +60,13 @@ export function ItemDrawerProvider({
   return (
     <ItemDrawerContext.Provider value={{ openItem }}>
       {children}
-      <Sheet open={open} onOpenChange={setOpen}>
+      <Sheet
+        open={open}
+        onOpenChange={(next) => {
+          setOpen(next);
+          if (!next) setEditing(false);
+        }}
+      >
         <SheetContent
           side="right"
           showClose={false}
@@ -75,8 +84,18 @@ export function ItemDrawerProvider({
                 Couldn&apos;t load this item. Please try again.
               </div>
             </>
+          ) : editing ? (
+            <ItemDrawerEdit
+              key={item.id}
+              item={item}
+              onCancel={() => setEditing(false)}
+              onSaved={(updated) => {
+                setItem(updated);
+                setEditing(false);
+              }}
+            />
           ) : (
-            <ItemDrawerDetail item={item} />
+            <ItemDrawerDetail item={item} onEdit={() => setEditing(true)} />
           )}
         </SheetContent>
       </Sheet>
