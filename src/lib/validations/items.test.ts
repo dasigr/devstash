@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { updateItemSchema } from "@/lib/validations/items";
+import { createItemSchema, updateItemSchema } from "@/lib/validations/items";
 
 describe("updateItemSchema", () => {
   it("requires a non-empty title and trims it", () => {
@@ -65,5 +65,76 @@ describe("updateItemSchema", () => {
   it("coerces a blank URL to null", () => {
     const parsed = updateItemSchema.parse({ title: "x", url: "  " });
     expect(parsed.url).toBeNull();
+  });
+});
+
+describe("createItemSchema", () => {
+  it("requires a valid creatable type", () => {
+    expect(
+      createItemSchema.safeParse({ type: "file", title: "x" }).success,
+    ).toBe(false);
+    expect(
+      createItemSchema.safeParse({ title: "x" }).success,
+    ).toBe(false);
+    expect(
+      createItemSchema.safeParse({ type: "snippet", title: "x" }).success,
+    ).toBe(true);
+  });
+
+  it("requires a non-empty title and trims it", () => {
+    expect(
+      createItemSchema.safeParse({ type: "note", title: "   " }).success,
+    ).toBe(false);
+
+    const parsed = createItemSchema.parse({
+      type: "note",
+      title: "  My note  ",
+    });
+    expect(parsed.title).toBe("My note");
+  });
+
+  it("requires a URL for link items", () => {
+    const missing = createItemSchema.safeParse({ type: "link", title: "x" });
+    expect(missing.success).toBe(false);
+
+    const blank = createItemSchema.safeParse({
+      type: "link",
+      title: "x",
+      url: "   ",
+    });
+    expect(blank.success).toBe(false);
+
+    const ok = createItemSchema.parse({
+      type: "link",
+      title: "x",
+      url: "https://example.com",
+    });
+    expect(ok.url).toBe("https://example.com");
+  });
+
+  it("flags a missing link URL on the url field", () => {
+    const result = createItemSchema.safeParse({ type: "link", title: "x" });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const paths = result.error.issues.map((i) => i.path.join("."));
+      expect(paths).toContain("url");
+    }
+  });
+
+  it("does not require a URL for non-link types", () => {
+    expect(
+      createItemSchema.safeParse({ type: "snippet", title: "x" }).success,
+    ).toBe(true);
+  });
+
+  it("preserves content whitespace and de-duplicates tags", () => {
+    const parsed = createItemSchema.parse({
+      type: "command",
+      title: "x",
+      content: "  ls -la\n  pwd",
+      tags: [" git ", "git", ""],
+    });
+    expect(parsed.content).toBe("  ls -la\n  pwd");
+    expect(parsed.tags).toEqual(["git"]);
   });
 });

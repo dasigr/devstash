@@ -1,12 +1,14 @@
-import { FolderPlus, Plus, Search } from "lucide-react";
+import { FolderPlus, Search } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SidebarToggle } from "@/components/dashboard/SidebarToggle";
+import { CreateItemDialog } from "@/components/dashboard/CreateItemDialog";
 
 /**
  * Dashboard top bar: sidebar toggle, search field, and
- * "New Collection" / "New Item" actions. Buttons are display only for now.
+ * "New Collection" / "New Item" actions. "New Item" opens the create modal;
+ * "New Collection" is display only for now.
  */
 export function TopBar() {
   return (
@@ -28,10 +30,7 @@ export function TopBar() {
           <FolderPlus className="size-4" />
           New Collection
         </Button>
-        <Button>
-          <Plus className="size-4" />
-          New Item
-        </Button>
+        <CreateItemDialog />
       </div>
     </header>
   );

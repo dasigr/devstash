@@ -2,7 +2,10 @@ import { cache } from "react";
 
 import { prisma } from "@/lib/prisma";
 import type { ContentType, Prisma } from "@/generated/prisma/client";
-import type { UpdateItemInput } from "@/lib/validations/items";
+import type {
+  CreateItemInput,
+  UpdateItemInput,
+} from "@/lib/validations/items";
 
 /** Minimal item-type shape an item card needs (badge icon + accent color). */
 export interface ItemTypeSummary {
@@ -235,6 +238,56 @@ export async function getItemDetail(
     }),
     updatedAt: relativeTime(item.updatedAt),
   };
+}
+
+// Link items store their value in `url` (contentType URL); every other creatable
+// type is plain text (contentType TEXT). File/image types aren't creatable here.
+const CONTENT_TYPE_BY_TYPE: Record<CreateItemInput["type"], ContentType> = {
+  snippet: "TEXT",
+  prompt: "TEXT",
+  command: "TEXT",
+  note: "TEXT",
+  link: "URL",
+};
+
+/**
+ * Create a new item owned by the given user and return its ItemDetail. Resolves
+ * the chosen creatable type to its system ItemType, derives the storage
+ * contentType from it, and connects tags (creating any that don't exist).
+ * Returns null when the system type can't be found (shouldn't happen once the
+ * types are seeded), so the caller can surface a generic error.
+ */
+export async function createItem(
+  userId: string,
+  data: CreateItemInput,
+): Promise<ItemDetail | null> {
+  const type = await prisma.itemType.findFirst({
+    where: { isSystem: true, name: data.type },
+    select: { id: true },
+  });
+  if (!type) return null;
+
+  const created = await prisma.item.create({
+    data: {
+      title: data.title,
+      contentType: CONTENT_TYPE_BY_TYPE[data.type],
+      description: data.description ?? null,
+      content: data.content ?? null,
+      language: data.language ?? null,
+      url: data.url ?? null,
+      user: { connect: { id: userId } },
+      itemType: { connect: { id: type.id } },
+      tags: {
+        connectOrCreate: data.tags.map((name) => ({
+          where: { name },
+          create: { name },
+        })),
+      },
+    },
+    select: { id: true },
+  });
+
+  return getItemDetail(created.id, userId);
 }
 
 /**
