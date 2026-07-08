@@ -62,7 +62,7 @@ export function ItemDrawerDetail({ item }: { item: ItemDetail }) {
   return (
     <div className="flex flex-col">
       {/* Header: type + action bar */}
-      <div className="flex items-center justify-between gap-2 border-b border-border px-8 py-6">
+      <div className="flex items-center justify-between gap-2 border-b border-border px-10 py-6">
         <div className="flex min-w-0 items-center gap-2">
           <ItemTypeBadge type={item.itemType} size="sm" />
           <span className="truncate text-sm font-medium text-foreground">
@@ -120,7 +120,7 @@ export function ItemDrawerDetail({ item }: { item: ItemDetail }) {
       </div>
 
       {/* Body */}
-      <div className="flex flex-col gap-6 px-8 py-6">
+      <div className="flex flex-col gap-6 px-10 py-6">
         <div>
           <SheetTitle className="text-xl leading-tight wrap-break-word">
             {item.title}
@@ -233,14 +233,14 @@ export function ItemDrawerDetail({ item }: { item: ItemDetail }) {
 export function ItemDrawerSkeleton() {
   return (
     <div className="flex animate-pulse flex-col">
-      <div className="flex items-center justify-between gap-2 border-b border-border px-8 py-6">
+      <div className="flex items-center justify-between gap-2 border-b border-border px-10 py-6">
         <div className="flex items-center gap-2">
           <div className="size-6 rounded-md bg-muted" />
           <div className="h-4 w-16 rounded bg-muted" />
         </div>
         <div className="h-8 w-40 rounded bg-muted" />
       </div>
-      <div className="flex flex-col gap-6 px-8 py-6">
+      <div className="flex flex-col gap-6 px-10 py-6">
         <div className="h-6 w-2/3 rounded bg-muted" />
         <div className="flex gap-2">
           <div className="h-6 w-28 rounded bg-muted" />
