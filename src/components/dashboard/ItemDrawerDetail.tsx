@@ -9,7 +9,6 @@ import {
   Pencil,
   Pin,
   Star,
-  Trash2,
   X,
 } from "lucide-react";
 
@@ -18,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { SheetClose, SheetTitle } from "@/components/ui/sheet";
 import { ItemTypeBadge } from "@/components/dashboard/ItemTypeBadge";
+import { DeleteItemButton } from "@/components/dashboard/DeleteItemButton";
 
 /** Capitalized singular type name for the header, e.g. "snippet" -> "Snippet". */
 function typeHeading(name: string): string {
@@ -43,15 +43,18 @@ function contentLabel(item: ItemDetail): string {
 
 /**
  * The item drawer's detail view. Edit switches the drawer into edit mode via
- * `onEdit`; Pin, Favorite, and Delete are display-only for now. Copy works
- * (client clipboard).
+ * `onEdit`; Delete confirms then removes the item and closes the drawer via
+ * `onDeleted`. Pin and Favorite are display-only for now. Copy works (client
+ * clipboard).
  */
 export function ItemDrawerDetail({
   item,
   onEdit,
+  onDeleted,
 }: {
   item: ItemDetail;
   onEdit: () => void;
+  onDeleted: () => void;
 }) {
   const [copied, setCopied] = useState(false);
   const value = copyValue(item);
@@ -113,15 +116,11 @@ export function ItemDrawerDetail({
           >
             <Pencil />
           </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            type="button"
-            aria-label="Delete item"
-            className="text-muted-foreground hover:text-destructive"
-          >
-            <Trash2 />
-          </Button>
+          <DeleteItemButton
+            itemId={item.id}
+            itemTitle={item.title}
+            onDeleted={onDeleted}
+          />
           <SheetClose
             render={
               <Button variant="ghost" size="icon" type="button" aria-label="Close" />

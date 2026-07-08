@@ -3,7 +3,10 @@
 import { z } from "zod";
 
 import { auth } from "@/auth";
-import { updateItem as updateItemQuery } from "@/lib/db/items";
+import {
+  deleteItem as deleteItemQuery,
+  updateItem as updateItemQuery,
+} from "@/lib/db/items";
 import type { ItemDetail } from "@/lib/db/items";
 import { updateItemSchema } from "@/lib/validations/items";
 
@@ -48,6 +51,32 @@ export async function updateItem(
     return { success: true, data: updated };
   } catch (error) {
     console.error("Failed to update item:", error);
+    return { success: false, error: "Something went wrong. Please try again." };
+  }
+}
+
+/**
+ * Delete an item the signed-in user owns. Resolves the session, then delegates
+ * to the owner-scoped query — which deletes nothing for a missing or foreign
+ * item, so a user can only remove their own. Returns a not-found error in that
+ * case, or `{ success: true }` when the item was deleted.
+ */
+export async function deleteItem(
+  itemId: string,
+): Promise<ActionResult<{ id: string }>> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { success: false, error: "You must be signed in." };
+  }
+
+  try {
+    const deleted = await deleteItemQuery(itemId, session.user.id);
+    if (!deleted) {
+      return { success: false, error: "Item not found." };
+    }
+    return { success: true, data: { id: itemId } };
+  } catch (error) {
+    console.error("Failed to delete item:", error);
     return { success: false, error: "Something went wrong. Please try again." };
   }
 }

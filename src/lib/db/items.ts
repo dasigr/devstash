@@ -279,6 +279,21 @@ export async function updateItem(
   return getItemDetail(id, userId);
 }
 
+/**
+ * Delete one item, scoped to its owner so a user can only delete their own
+ * (guards against IDOR). `deleteMany` filters by both id and userId in a single
+ * atomic statement — a foreign or missing id matches nothing. Returns true when
+ * a row was deleted, false otherwise. Cascade deletes remove the item's
+ * ItemCollection links and tag join rows per the schema.
+ */
+export async function deleteItem(
+  id: string,
+  userId: string,
+): Promise<boolean> {
+  const { count } = await prisma.item.deleteMany({ where: { id, userId } });
+  return count > 0;
+}
+
 /** A system item type prepared for the sidebar nav. */
 export interface SidebarItemType {
   id: string;

@@ -2,14 +2,18 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock the session and the query layer so the action's own logic (auth guard,
 // validation, error mapping) is exercised without a database.
-const { auth, updateItemQuery } = vi.hoisted(() => ({
+const { auth, updateItemQuery, deleteItemQuery } = vi.hoisted(() => ({
   auth: vi.fn(),
   updateItemQuery: vi.fn(),
+  deleteItemQuery: vi.fn(),
 }));
 vi.mock("@/auth", () => ({ auth }));
-vi.mock("@/lib/db/items", () => ({ updateItem: updateItemQuery }));
+vi.mock("@/lib/db/items", () => ({
+  updateItem: updateItemQuery,
+  deleteItem: deleteItemQuery,
+}));
 
-import { updateItem } from "@/actions/items";
+import { deleteItem, updateItem } from "@/actions/items";
 
 const validInput = { title: "Updated", tags: ["react"] };
 
@@ -76,6 +80,61 @@ describe("updateItem action", () => {
     updateItemQuery.mockRejectedValue(new Error("db down"));
 
     const result = await updateItem("item_1", validInput);
+
+    expect(result).toEqual({
+      success: false,
+      error: "Something went wrong. Please try again.",
+    });
+  });
+});
+
+describe("deleteItem action", () => {
+  beforeEach(() => {
+    auth.mockReset();
+    deleteItemQuery.mockReset();
+  });
+
+  it("rejects an unauthenticated caller without touching the DB", async () => {
+    auth.mockResolvedValue(null);
+
+    const result = await deleteItem("item_1");
+
+    expect(result).toEqual({ success: false, error: "You must be signed in." });
+    expect(deleteItemQuery).not.toHaveBeenCalled();
+  });
+
+  it("passes the item id and owner id to the query", async () => {
+    auth.mockResolvedValue({ user: { id: "user_1" } });
+    deleteItemQuery.mockResolvedValue(true);
+
+    await deleteItem("item_1");
+
+    expect(deleteItemQuery).toHaveBeenCalledWith("item_1", "user_1");
+  });
+
+  it("maps a missing/foreign item to a not-found error", async () => {
+    auth.mockResolvedValue({ user: { id: "user_1" } });
+    deleteItemQuery.mockResolvedValue(false);
+
+    const result = await deleteItem("item_1");
+
+    expect(result).toEqual({ success: false, error: "Item not found." });
+  });
+
+  it("returns the deleted item id on success", async () => {
+    auth.mockResolvedValue({ user: { id: "user_1" } });
+    deleteItemQuery.mockResolvedValue(true);
+
+    const result = await deleteItem("item_1");
+
+    expect(result).toEqual({ success: true, data: { id: "item_1" } });
+  });
+
+  it("returns a generic error when the query throws", async () => {
+    auth.mockResolvedValue({ user: { id: "user_1" } });
+    deleteItemQuery.mockRejectedValue(new Error("db down"));
+
+    const result = await deleteItem("item_1");
 
     expect(result).toEqual({
       success: false,
