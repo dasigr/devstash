@@ -2,12 +2,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock the Prisma client so the query runs without a database. `vi.hoisted`
 // lets the mock factory reference the spy (vi.mock is hoisted above imports).
-const { findFirst } = vi.hoisted(() => ({ findFirst: vi.fn() }));
+const { findFirst, update } = vi.hoisted(() => ({
+  findFirst: vi.fn(),
+  update: vi.fn(),
+}));
 vi.mock("@/lib/prisma", () => ({
-  prisma: { item: { findFirst } },
+  prisma: { item: { findFirst, update } },
 }));
 
-import { getItemDetail } from "@/lib/db/items";
+import { getItemDetail, updateItem } from "@/lib/db/items";
 
 /** A raw item matching the shape `getItemDetail` selects from Prisma. */
 function rawItem(overrides: Record<string, unknown> = {}) {
@@ -103,5 +106,94 @@ describe("getItemDetail", () => {
     const detail = await getItemDetail("item_1", "user_1");
 
     expect(detail?.collections[0].color).toBe("#6b7280");
+  });
+});
+
+describe("updateItem", () => {
+  beforeEach(() => {
+    findFirst.mockReset();
+    update.mockReset();
+  });
+
+  const validData = {
+    title: "New title",
+    description: "desc",
+    content: "code",
+    language: "typescript",
+    url: undefined,
+    tags: ["react", "hooks"],
+  };
+
+  it("returns null and skips the write when the item isn't owned", async () => {
+    // First findFirst is the ownership check.
+    findFirst.mockResolvedValueOnce(null);
+
+    const result = await updateItem("item_1", "user_1", validData);
+
+    expect(result).toBeNull();
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("scopes the ownership check to the item id and owner", async () => {
+    findFirst.mockResolvedValueOnce({ id: "item_1" }); // ownership
+    update.mockResolvedValueOnce({});
+    findFirst.mockResolvedValueOnce(rawItem()); // getItemDetail re-read
+
+    await updateItem("item_1", "user_1", validData);
+
+    expect(findFirst.mock.calls[0][0].where).toEqual({
+      id: "item_1",
+      userId: "user_1",
+    });
+  });
+
+  it("replaces tags via set:[] + connectOrCreate and sets defined fields", async () => {
+    findFirst.mockResolvedValueOnce({ id: "item_1" });
+    update.mockResolvedValueOnce({});
+    findFirst.mockResolvedValueOnce(rawItem());
+
+    await updateItem("item_1", "user_1", validData);
+
+    const data = update.mock.calls[0][0].data;
+    expect(data.title).toBe("New title");
+    expect(data.description).toBe("desc");
+    expect(data.content).toBe("code");
+    expect(data.language).toBe("typescript");
+    // url was undefined, so it must not be written.
+    expect("url" in data).toBe(false);
+    expect(data.tags).toEqual({
+      set: [],
+      connectOrCreate: [
+        { where: { name: "react" }, create: { name: "react" } },
+        { where: { name: "hooks" }, create: { name: "hooks" } },
+      ],
+    });
+  });
+
+  it("writes null when a field is explicitly cleared", async () => {
+    findFirst.mockResolvedValueOnce({ id: "item_1" });
+    update.mockResolvedValueOnce({});
+    findFirst.mockResolvedValueOnce(rawItem());
+
+    await updateItem("item_1", "user_1", {
+      title: "x",
+      description: null,
+      language: null,
+      tags: [],
+    });
+
+    const data = update.mock.calls[0][0].data;
+    expect(data.description).toBeNull();
+    expect(data.language).toBeNull();
+  });
+
+  it("returns the refreshed ItemDetail after the update", async () => {
+    findFirst.mockResolvedValueOnce({ id: "item_1" });
+    update.mockResolvedValueOnce({});
+    findFirst.mockResolvedValueOnce(rawItem());
+
+    const result = await updateItem("item_1", "user_1", validData);
+
+    expect(result).toMatchObject({ id: "item_1", title: "useDebounce hook" });
   });
 });

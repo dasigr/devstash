@@ -42,10 +42,17 @@ function contentLabel(item: ItemDetail): string {
 }
 
 /**
- * The item drawer's detail view. Action-bar buttons (Pin, Favorite, Edit,
- * Delete) are display-only for now; Copy works (client clipboard).
+ * The item drawer's detail view. Edit switches the drawer into edit mode via
+ * `onEdit`; Pin, Favorite, and Delete are display-only for now. Copy works
+ * (client clipboard).
  */
-export function ItemDrawerDetail({ item }: { item: ItemDetail }) {
+export function ItemDrawerDetail({
+  item,
+  onEdit,
+}: {
+  item: ItemDetail;
+  onEdit: () => void;
+}) {
   const [copied, setCopied] = useState(false);
   const value = copyValue(item);
 
@@ -97,7 +104,13 @@ export function ItemDrawerDetail({ item }: { item: ItemDetail }) {
               )}
             />
           </Button>
-          <Button variant="ghost" size="icon" type="button" aria-label="Edit item">
+          <Button
+            variant="ghost"
+            size="icon"
+            type="button"
+            aria-label="Edit item"
+            onClick={onEdit}
+          >
             <Pencil />
           </Button>
           <Button
