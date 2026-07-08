@@ -95,7 +95,11 @@ export function ItemDrawerProvider({
               }}
             />
           ) : (
-            <ItemDrawerDetail item={item} onEdit={() => setEditing(true)} />
+            <ItemDrawerDetail
+              item={item}
+              onEdit={() => setEditing(true)}
+              onDeleted={() => setOpen(false)}
+            />
           )}
         </SheetContent>
       </Sheet>

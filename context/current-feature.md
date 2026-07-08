@@ -1,16 +1,25 @@
-# Current Feature
+# Current Feature: Item Delete
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- What does success look like? -->
+- Wire the Item Drawer's existing **Delete** (trash) button to actually delete the item.
+- Show a **ShadCN-style confirmation dialog** (the existing Base UI `AlertDialog` wrapper) before deleting — no accidental one-click deletes.
+- On confirm, delete via an **owner-scoped server action** (`deleteItem`) in `src/actions/items.ts`, guarding IDOR like `updateItem`.
+- Show a **success toast** after deletion (via the existing `toastManager`), and an error toast on failure.
+- After a successful delete: **close the drawer** and **refresh** the underlying card list (`router.refresh()`) so the removed item disappears from the dashboard / `/items/[type]` grid.
+- Add/extend **Vitest** coverage for the new `deleteItem` query + server action (ownership scoping, not-found, success, thrown→generic).
 
 ## Notes
 
-<!-- Additional context, constraints, or spec details -->
+- The Delete button already exists in `ItemDrawerDetail`'s action bar (from the Item Drawer feature) but is currently display-only — this feature wires the mutation.
+- Reuse the existing **`AlertDialog`** wrapper (`src/components/ui/alert-dialog.tsx`) — same component the profile Delete-account danger zone uses.
+- Follow the established server-action pattern: `"use server"`, `auth()` guard, `{ success, data | error }` (`ActionResult<T>`), null→"Item not found.", try/catch→generic error.
+- Owner-scoped delete query in `src/lib/db/items.ts`: `findFirst { id, userId }` ownership check before `item.delete` (mirrors `updateItem`). Cascade removes `ItemCollection` + tag join rows per schema.
+- No schema/migration expected (delete only). No new deps (AlertDialog + toast already installed).
 
 ## History
 

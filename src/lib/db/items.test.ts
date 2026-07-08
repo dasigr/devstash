@@ -2,15 +2,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock the Prisma client so the query runs without a database. `vi.hoisted`
 // lets the mock factory reference the spy (vi.mock is hoisted above imports).
-const { findFirst, update } = vi.hoisted(() => ({
+const { findFirst, update, deleteMany } = vi.hoisted(() => ({
   findFirst: vi.fn(),
   update: vi.fn(),
+  deleteMany: vi.fn(),
 }));
 vi.mock("@/lib/prisma", () => ({
-  prisma: { item: { findFirst, update } },
+  prisma: { item: { findFirst, update, deleteMany } },
 }));
 
-import { getItemDetail, updateItem } from "@/lib/db/items";
+import { deleteItem, getItemDetail, updateItem } from "@/lib/db/items";
 
 /** A raw item matching the shape `getItemDetail` selects from Prisma. */
 function rawItem(overrides: Record<string, unknown> = {}) {
@@ -195,5 +196,33 @@ describe("updateItem", () => {
     const result = await updateItem("item_1", "user_1", validData);
 
     expect(result).toMatchObject({ id: "item_1", title: "useDebounce hook" });
+  });
+});
+
+describe("deleteItem", () => {
+  beforeEach(() => {
+    deleteMany.mockReset();
+  });
+
+  it("scopes the delete to the item id and owner (IDOR guard)", async () => {
+    deleteMany.mockResolvedValue({ count: 1 });
+
+    await deleteItem("item_1", "user_1");
+
+    expect(deleteMany).toHaveBeenCalledTimes(1);
+    expect(deleteMany.mock.calls[0][0].where).toEqual({
+      id: "item_1",
+      userId: "user_1",
+    });
+  });
+
+  it("returns true when a row was deleted", async () => {
+    deleteMany.mockResolvedValue({ count: 1 });
+    expect(await deleteItem("item_1", "user_1")).toBe(true);
+  });
+
+  it("returns false when nothing matched (missing or not owned)", async () => {
+    deleteMany.mockResolvedValue({ count: 0 });
+    expect(await deleteItem("nope", "user_1")).toBe(false);
   });
 });
