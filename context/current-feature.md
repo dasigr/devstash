@@ -1,16 +1,29 @@
-# Current Feature
+# Current Feature: Item Create
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- What does success look like? -->
+- Add new items via a modal **Dialog** (shadcn), opened from the "New Item" button in the top bar.
+- Type selector supporting the 5 text/url system types: snippet, prompt, command, note, link.
+- Type-gated fields:
+  - All types: `title` (required), `description`, `tags`
+  - snippet / command: `content`, `language`
+  - prompt / note: `content`
+  - link: `url` (required)
+- Server action `createItem` with Zod validation.
+- Query function `createItem` in `src/lib/db/items.ts`.
+- Success toast, then close the modal and refresh the list.
 
 ## Notes
 
-<!-- Additional context, constraints, or spec details -->
+- Spec: `context/features/item-create-spec.md`.
+- Mirror the existing edit-mode patterns from **Item Drawer — Edit Mode**: reuse the Zod validation style in `src/lib/validations/items.ts`, the owner-scoped query pattern in `src/lib/db/items.ts`, the `ActionResult<T>` server-action shape in `src/actions/items.ts`, and the Base UI toast (`toastManager`) + `router.refresh()` flow.
+- File/image types are Pro/out of scope here — only the 5 text/url types.
+- Use the codebase's Base-UI-wrapper convention for the Dialog (like `sheet.tsx`/`alert-dialog.tsx`) rather than pulling in Radix, unless a shadcn Dialog wrapper already exists.
+- Add/extend Vitest coverage for the new validation schema, query, and server action (no DB/network).
 
 ## History
 

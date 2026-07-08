@@ -2,16 +2,28 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock the Prisma client so the query runs without a database. `vi.hoisted`
 // lets the mock factory reference the spy (vi.mock is hoisted above imports).
-const { findFirst, update, deleteMany } = vi.hoisted(() => ({
-  findFirst: vi.fn(),
-  update: vi.fn(),
-  deleteMany: vi.fn(),
-}));
+const { findFirst, update, deleteMany, create, typeFindFirst } = vi.hoisted(
+  () => ({
+    findFirst: vi.fn(),
+    update: vi.fn(),
+    deleteMany: vi.fn(),
+    create: vi.fn(),
+    typeFindFirst: vi.fn(),
+  }),
+);
 vi.mock("@/lib/prisma", () => ({
-  prisma: { item: { findFirst, update, deleteMany } },
+  prisma: {
+    item: { findFirst, update, deleteMany, create },
+    itemType: { findFirst: typeFindFirst },
+  },
 }));
 
-import { deleteItem, getItemDetail, updateItem } from "@/lib/db/items";
+import {
+  createItem,
+  deleteItem,
+  getItemDetail,
+  updateItem,
+} from "@/lib/db/items";
 
 /** A raw item matching the shape `getItemDetail` selects from Prisma. */
 function rawItem(overrides: Record<string, unknown> = {}) {
@@ -196,6 +208,104 @@ describe("updateItem", () => {
     const result = await updateItem("item_1", "user_1", validData);
 
     expect(result).toMatchObject({ id: "item_1", title: "useDebounce hook" });
+  });
+});
+
+describe("createItem", () => {
+  beforeEach(() => {
+    typeFindFirst.mockReset();
+    create.mockReset();
+    findFirst.mockReset();
+  });
+
+  const snippetData = {
+    type: "snippet" as const,
+    title: "New snippet",
+    description: "desc",
+    content: "code here",
+    language: "typescript",
+    url: null,
+    tags: ["react", "hooks"],
+  };
+
+  it("returns null when the system type can't be resolved", async () => {
+    typeFindFirst.mockResolvedValue(null);
+
+    const result = await createItem("user_1", snippetData);
+
+    expect(result).toBeNull();
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it("resolves the chosen system type by name", async () => {
+    typeFindFirst.mockResolvedValue({ id: "type_snippet" });
+    create.mockResolvedValue({ id: "item_new" });
+    findFirst.mockResolvedValue(rawItem({ id: "item_new" }));
+
+    await createItem("user_1", snippetData);
+
+    expect(typeFindFirst.mock.calls[0][0].where).toEqual({
+      isSystem: true,
+      name: "snippet",
+    });
+  });
+
+  it("creates a TEXT item connecting owner, type, and tags", async () => {
+    typeFindFirst.mockResolvedValue({ id: "type_snippet" });
+    create.mockResolvedValue({ id: "item_new" });
+    findFirst.mockResolvedValue(rawItem({ id: "item_new" }));
+
+    await createItem("user_1", snippetData);
+
+    const data = create.mock.calls[0][0].data;
+    expect(data.title).toBe("New snippet");
+    expect(data.contentType).toBe("TEXT");
+    expect(data.content).toBe("code here");
+    expect(data.language).toBe("typescript");
+    expect(data.url).toBeNull();
+    expect(data.user).toEqual({ connect: { id: "user_1" } });
+    expect(data.itemType).toEqual({ connect: { id: "type_snippet" } });
+    expect(data.tags).toEqual({
+      connectOrCreate: [
+        { where: { name: "react" }, create: { name: "react" } },
+        { where: { name: "hooks" }, create: { name: "hooks" } },
+      ],
+    });
+  });
+
+  it("stores a link as a URL-content-type item", async () => {
+    typeFindFirst.mockResolvedValue({ id: "type_link" });
+    create.mockResolvedValue({ id: "item_link" });
+    findFirst.mockResolvedValue(rawItem({ id: "item_link" }));
+
+    await createItem("user_1", {
+      type: "link",
+      title: "Docs",
+      description: null,
+      content: null,
+      language: null,
+      url: "https://example.com",
+      tags: [],
+    });
+
+    const data = create.mock.calls[0][0].data;
+    expect(data.contentType).toBe("URL");
+    expect(data.url).toBe("https://example.com");
+  });
+
+  it("returns the created item's detail", async () => {
+    typeFindFirst.mockResolvedValue({ id: "type_snippet" });
+    create.mockResolvedValue({ id: "item_new" });
+    findFirst.mockResolvedValue(rawItem({ id: "item_new" }));
+
+    const result = await createItem("user_1", snippetData);
+
+    expect(result).toMatchObject({ id: "item_new" });
+    // Detail is re-read scoped to the new id and the owner.
+    expect(findFirst.mock.calls[0][0].where).toEqual({
+      id: "item_new",
+      userId: "user_1",
+    });
   });
 });
 
