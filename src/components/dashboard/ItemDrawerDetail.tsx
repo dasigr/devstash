@@ -14,12 +14,13 @@ import {
 
 import type { ItemDetail } from "@/lib/db/items";
 import { cn } from "@/lib/utils";
-import { isCodeType } from "@/lib/code-types";
+import { isCodeType, isMarkdownType } from "@/lib/code-types";
 import { Button } from "@/components/ui/button";
 import { SheetClose, SheetTitle } from "@/components/ui/sheet";
 import { ItemTypeBadge } from "@/components/dashboard/ItemTypeBadge";
 import { DeleteItemButton } from "@/components/dashboard/DeleteItemButton";
 import { CodeEditor } from "@/components/dashboard/CodeEditor";
+import { MarkdownEditor } from "@/components/dashboard/MarkdownEditor";
 
 /** Capitalized singular type name for the header, e.g. "snippet" -> "Snippet". */
 function typeHeading(name: string): string {
@@ -157,13 +158,19 @@ export function ItemDrawerDetail({
           </span>
         </div>
 
-        {/* Content — code types get the Monaco editor (readonly); everything
-            else keeps the simple boxed pre / link. */}
+        {/* Content — code types get the Monaco editor (readonly), note/prompt get
+            the Markdown preview; everything else keeps the boxed pre / link. */}
         {isCodeType(item.itemType.name) && item.contentType !== "URL" ? (
           <CodeEditor
             value={value}
             language={item.language}
             label={contentLabel(item)}
+            readOnly
+            ariaLabel={`${item.title} content`}
+          />
+        ) : isMarkdownType(item.itemType.name) ? (
+          <MarkdownEditor
+            value={value}
             readOnly
             ariaLabel={`${item.title} content`}
           />

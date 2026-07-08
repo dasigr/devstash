@@ -7,13 +7,14 @@ import { Loader2, X } from "lucide-react";
 import type { ItemDetail } from "@/lib/db/items";
 import { updateItem } from "@/actions/items";
 import { toastManager } from "@/lib/toast";
-import { editorLanguageLabel, isCodeType } from "@/lib/code-types";
+import { editorLanguageLabel, isCodeType, isMarkdownType } from "@/lib/code-types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { SheetTitle } from "@/components/ui/sheet";
 import { ItemTypeBadge } from "@/components/dashboard/ItemTypeBadge";
 import { CodeEditor } from "@/components/dashboard/CodeEditor";
+import { MarkdownEditor } from "@/components/dashboard/MarkdownEditor";
 
 /** Capitalized singular type name for the header, e.g. "snippet" -> "Snippet". */
 function typeHeading(name: string): string {
@@ -63,6 +64,7 @@ export function ItemDrawerEdit({
   const showLanguage = LANGUAGE_TYPES.has(typeName);
   const showUrl = URL_TYPES.has(typeName);
   const useCodeEditor = isCodeType(typeName);
+  const useMarkdownEditor = isMarkdownType(typeName);
 
   const titleEmpty = title.trim() === "";
 
@@ -189,6 +191,12 @@ export function ItemDrawerEdit({
                 value={content}
                 language={language}
                 label={editorLanguageLabel(language, typeName)}
+                onChange={setContent}
+                ariaLabel="Content"
+              />
+            ) : useMarkdownEditor ? (
+              <MarkdownEditor
+                value={content}
                 onChange={setContent}
                 ariaLabel="Content"
               />

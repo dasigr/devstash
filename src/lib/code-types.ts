@@ -12,6 +12,14 @@ export function isCodeType(typeName: string): boolean {
   return CODE_ITEM_TYPES.has(typeName.trim().toLowerCase());
 }
 
+/** Item types whose content is Markdown — shown in the `MarkdownEditor`. */
+export const MARKDOWN_ITEM_TYPES = new Set(["note", "prompt"]);
+
+/** True when a type's content should use the Markdown editor rather than a textarea. */
+export function isMarkdownType(typeName: string): boolean {
+  return MARKDOWN_ITEM_TYPES.has(typeName.trim().toLowerCase());
+}
+
 /**
  * Map a stored, free-text language (e.g. "bash", "ts", "TypeScript") to a
  * Monaco language id. Unknown languages pass through lowercased so Monaco can

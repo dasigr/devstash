@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 
 import {
   isCodeType,
+  isMarkdownType,
   monacoLanguage,
   editorLanguageLabel,
 } from "@/lib/code-types";
@@ -21,6 +22,30 @@ describe("isCodeType", () => {
   it("is case- and whitespace-insensitive", () => {
     expect(isCodeType("  Snippet  ")).toBe(true);
     expect(isCodeType("COMMAND")).toBe(true);
+  });
+});
+
+describe("isMarkdownType", () => {
+  it("is true for the markdown types", () => {
+    expect(isMarkdownType("note")).toBe(true);
+    expect(isMarkdownType("prompt")).toBe(true);
+  });
+
+  it("is false for code and other types", () => {
+    expect(isMarkdownType("snippet")).toBe(false);
+    expect(isMarkdownType("command")).toBe(false);
+    expect(isMarkdownType("link")).toBe(false);
+  });
+
+  it("is case- and whitespace-insensitive", () => {
+    expect(isMarkdownType("  Note  ")).toBe(true);
+    expect(isMarkdownType("PROMPT")).toBe(true);
+  });
+
+  it("is mutually exclusive with isCodeType", () => {
+    for (const t of ["snippet", "command", "note", "prompt", "link"]) {
+      expect(isMarkdownType(t) && isCodeType(t)).toBe(false);
+    }
   });
 });
 
