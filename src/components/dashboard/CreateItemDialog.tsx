@@ -8,7 +8,7 @@ import { createItem } from "@/actions/items";
 import type { CreatableItemType } from "@/lib/validations/items";
 import { toastManager } from "@/lib/toast";
 import { cn } from "@/lib/utils";
-import { editorLanguageLabel, isCodeType } from "@/lib/code-types";
+import { editorLanguageLabel, isCodeType, isMarkdownType } from "@/lib/code-types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { ItemTypeIcon } from "@/components/dashboard/ItemTypeIcon";
 import { CodeEditor } from "@/components/dashboard/CodeEditor";
+import { MarkdownEditor } from "@/components/dashboard/MarkdownEditor";
 
 /** The selectable creatable types, with their display label / icon / color. */
 const TYPES: {
@@ -77,6 +78,7 @@ export function CreateItemDialog() {
   const showLanguage = LANGUAGE_TYPES.has(type);
   const showUrl = URL_TYPES.has(type);
   const useCodeEditor = isCodeType(type);
+  const useMarkdownEditor = isMarkdownType(type);
 
   const titleEmpty = title.trim() === "";
   const urlMissing = showUrl && url.trim() === "";
@@ -244,6 +246,12 @@ export function CreateItemDialog() {
                   value={content}
                   language={language}
                   label={editorLanguageLabel(language, type)}
+                  onChange={setContent}
+                  ariaLabel="Content"
+                />
+              ) : useMarkdownEditor ? (
+                <MarkdownEditor
+                  value={content}
                   onChange={setContent}
                   ariaLabel="Content"
                 />
