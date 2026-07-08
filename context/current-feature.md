@@ -1,16 +1,27 @@
-# Current Feature
+# Current Feature: Code Editor (Monaco) for Snippets & Commands
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+- Create a `CodeEditor` component built on **Monaco Editor** with a dark theme matching the app.
+- Replace the plain `Textarea` with `CodeEditor` for **snippet** and **command** types only.
+- Keep the plain `Textarea` for **note**, **prompt**, and other non-code text types.
+- Add macOS-style window dots (red / yellow / green) at the top of the editor.
+- Add a quick **Copy** button in the editor header.
+- Show the **language** in the editor header next to Copy.
+- Support both **display (readonly)** and **edit** modes.
+- Fluid height with a **max height of 400px** and a themed, nice-looking scrollbar.
 
 ## Notes
 
-<!-- Additional context, constraints, or details from spec -->
+- Spec: `context/features/code-editor-spec.md`.
+- Content editing lives in `ItemDrawerEdit.tsx` (edit mode) and `CreateItemDialog.tsx` (create); display/readonly content lives in `ItemDrawerDetail.tsx`. All three currently render code/text via `Textarea`/`pre`.
+- Type-gating already exists: Content field shows for snippet/prompt/command/note; Language shows for snippet/command. Editor swap should key off the code types (snippet, command) — the ones that carry a `language`.
+- Verify Monaco integration works with Next.js 16 (client-only component; likely `@monaco-editor/react` with dynamic import / `"use client"`). Check `node_modules/next/dist/docs/` for any relevant constraints before wiring.
+- Non-code text types keep the existing `Textarea`.
 
 ## History
 

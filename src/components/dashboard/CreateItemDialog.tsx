@@ -8,6 +8,7 @@ import { createItem } from "@/actions/items";
 import type { CreatableItemType } from "@/lib/validations/items";
 import { toastManager } from "@/lib/toast";
 import { cn } from "@/lib/utils";
+import { editorLanguageLabel, isCodeType } from "@/lib/code-types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -21,6 +22,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { ItemTypeIcon } from "@/components/dashboard/ItemTypeIcon";
+import { CodeEditor } from "@/components/dashboard/CodeEditor";
 
 /** The selectable creatable types, with their display label / icon / color. */
 const TYPES: {
@@ -74,6 +76,7 @@ export function CreateItemDialog() {
   const showContent = CONTENT_TYPES.has(type);
   const showLanguage = LANGUAGE_TYPES.has(type);
   const showUrl = URL_TYPES.has(type);
+  const useCodeEditor = isCodeType(type);
 
   const titleEmpty = title.trim() === "";
   const urlMissing = showUrl && url.trim() === "";
@@ -236,13 +239,23 @@ export function CreateItemDialog() {
               >
                 Content
               </label>
-              <Textarea
-                id="new-item-content"
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                rows={8}
-                className="font-mono text-xs"
-              />
+              {useCodeEditor ? (
+                <CodeEditor
+                  value={content}
+                  language={language}
+                  label={editorLanguageLabel(language, type)}
+                  onChange={setContent}
+                  ariaLabel="Content"
+                />
+              ) : (
+                <Textarea
+                  id="new-item-content"
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  rows={8}
+                  className="font-mono text-xs"
+                />
+              )}
             </div>
           )}
 

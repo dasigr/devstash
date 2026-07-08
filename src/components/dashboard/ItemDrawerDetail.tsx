@@ -14,10 +14,12 @@ import {
 
 import type { ItemDetail } from "@/lib/db/items";
 import { cn } from "@/lib/utils";
+import { isCodeType } from "@/lib/code-types";
 import { Button } from "@/components/ui/button";
 import { SheetClose, SheetTitle } from "@/components/ui/sheet";
 import { ItemTypeBadge } from "@/components/dashboard/ItemTypeBadge";
 import { DeleteItemButton } from "@/components/dashboard/DeleteItemButton";
+import { CodeEditor } from "@/components/dashboard/CodeEditor";
 
 /** Capitalized singular type name for the header, e.g. "snippet" -> "Snippet". */
 function typeHeading(name: string): string {
@@ -155,42 +157,53 @@ export function ItemDrawerDetail({
           </span>
         </div>
 
-        {/* Content */}
-        <div className="overflow-hidden rounded-lg border border-border">
-          <div className="flex items-center justify-between border-b border-border bg-muted/50 px-3 py-2">
-            <span className="text-xs font-medium text-muted-foreground">
-              {contentLabel(item)}
-            </span>
-            {value && (
-              <Button
-                variant="ghost"
-                size="xs"
-                type="button"
-                onClick={handleCopy}
-                aria-label="Copy content"
+        {/* Content — code types get the Monaco editor (readonly); everything
+            else keeps the simple boxed pre / link. */}
+        {isCodeType(item.itemType.name) && item.contentType !== "URL" ? (
+          <CodeEditor
+            value={value}
+            language={item.language}
+            label={contentLabel(item)}
+            readOnly
+            ariaLabel={`${item.title} content`}
+          />
+        ) : (
+          <div className="overflow-hidden rounded-lg border border-border">
+            <div className="flex items-center justify-between border-b border-border bg-muted/50 px-3 py-2">
+              <span className="text-xs font-medium text-muted-foreground">
+                {contentLabel(item)}
+              </span>
+              {value && (
+                <Button
+                  variant="ghost"
+                  size="xs"
+                  type="button"
+                  onClick={handleCopy}
+                  aria-label="Copy content"
+                >
+                  {copied ? <Check /> : <Copy />}
+                  {copied ? "Copied" : "Copy"}
+                </Button>
+              )}
+            </div>
+            {item.contentType === "URL" && item.url ? (
+              <a
+                href={item.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block break-all p-4 font-mono text-xs text-primary hover:underline"
               >
-                {copied ? <Check /> : <Copy />}
-                {copied ? "Copied" : "Copy"}
-              </Button>
+                {item.url}
+              </a>
+            ) : (
+              <pre className="overflow-x-auto p-4 font-mono text-xs whitespace-pre-wrap text-foreground">
+                {value || (
+                  <span className="text-muted-foreground">No content.</span>
+                )}
+              </pre>
             )}
           </div>
-          {item.contentType === "URL" && item.url ? (
-            <a
-              href={item.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block break-all p-4 font-mono text-xs text-primary hover:underline"
-            >
-              {item.url}
-            </a>
-          ) : (
-            <pre className="overflow-x-auto p-4 font-mono text-xs whitespace-pre-wrap text-foreground">
-              {value || (
-                <span className="text-muted-foreground">No content.</span>
-              )}
-            </pre>
-          )}
-        </div>
+        )}
 
         {/* Tags */}
         {item.tags.length > 0 && (
