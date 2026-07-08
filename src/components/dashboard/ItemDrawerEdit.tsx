@@ -7,11 +7,13 @@ import { Loader2, X } from "lucide-react";
 import type { ItemDetail } from "@/lib/db/items";
 import { updateItem } from "@/actions/items";
 import { toastManager } from "@/lib/toast";
+import { editorLanguageLabel, isCodeType } from "@/lib/code-types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { SheetTitle } from "@/components/ui/sheet";
 import { ItemTypeBadge } from "@/components/dashboard/ItemTypeBadge";
+import { CodeEditor } from "@/components/dashboard/CodeEditor";
 
 /** Capitalized singular type name for the header, e.g. "snippet" -> "Snippet". */
 function typeHeading(name: string): string {
@@ -60,6 +62,7 @@ export function ItemDrawerEdit({
   const showContent = CONTENT_TYPES.has(typeName);
   const showLanguage = LANGUAGE_TYPES.has(typeName);
   const showUrl = URL_TYPES.has(typeName);
+  const useCodeEditor = isCodeType(typeName);
 
   const titleEmpty = title.trim() === "";
 
@@ -181,13 +184,23 @@ export function ItemDrawerEdit({
             >
               Content
             </label>
-            <Textarea
-              id="item-content"
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              rows={8}
-              className="font-mono text-xs"
-            />
+            {useCodeEditor ? (
+              <CodeEditor
+                value={content}
+                language={language}
+                label={editorLanguageLabel(language, typeName)}
+                onChange={setContent}
+                ariaLabel="Content"
+              />
+            ) : (
+              <Textarea
+                id="item-content"
+                value={content}
+                onChange={(e) => setContent(e.target.value)}
+                rows={8}
+                className="font-mono text-xs"
+              />
+            )}
           </div>
         )}
 
