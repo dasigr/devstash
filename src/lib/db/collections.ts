@@ -4,6 +4,13 @@ import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { itemSelect, toDashboardItem } from "@/lib/db/items";
 import type { DashboardItem } from "@/lib/db/items";
+import {
+  COLLECTIONS_PER_PAGE,
+  DASHBOARD_COLLECTIONS_LIMIT,
+  ITEMS_PER_PAGE,
+  buildPageInfo,
+} from "@/lib/pagination";
+import type { PageInfo } from "@/lib/pagination";
 import type {
   CreateCollectionInput,
   UpdateCollectionInput,
@@ -94,12 +101,14 @@ async function listCollections(
   userId: string,
   options: {
     orderBy: Prisma.CollectionOrderByWithRelationInput[];
+    skip?: number;
     take?: number;
   }
 ): Promise<DashboardCollection[]> {
   const collections = await prisma.collection.findMany({
     where: { userId },
     orderBy: options.orderBy,
+    skip: options.skip,
     take: options.take,
     select: { id: true, name: true, description: true, isFavorite: true },
   });
@@ -147,7 +156,7 @@ function toDashboardCollection(
  */
 export async function getRecentCollections(
   userId: string,
-  limit = 6
+  limit = DASHBOARD_COLLECTIONS_LIMIT
 ): Promise<DashboardCollection[]> {
   return listCollections(userId, {
     orderBy: [{ updatedAt: "desc" }],
@@ -155,16 +164,39 @@ export async function getRecentCollections(
   });
 }
 
+/** One page of collections plus the totals its controls need. */
+export interface CollectionPage {
+  collections: DashboardCollection[];
+  pagination: PageInfo;
+}
+
 /**
- * All of the given user's collections, for the /collections page: favorites
- * first, then most recently updated — matching the sidebar's ordering.
+ * One page of the given user's collections, for the /collections page:
+ * favorites first, then most recently updated — matching the sidebar's
+ * ordering.
+ *
+ * Only the requested page is fetched. The count runs first because
+ * `buildPageInfo` clamps an out-of-range `?page=` to the last page, and the
+ * clamped page is what decides `skip`.
  */
 export async function getAllCollections(
-  userId: string
-): Promise<DashboardCollection[]> {
-  return listCollections(userId, {
+  userId: string,
+  requestedPage = 1
+): Promise<CollectionPage> {
+  const totalCount = await prisma.collection.count({ where: { userId } });
+  const pagination = buildPageInfo(
+    requestedPage,
+    COLLECTIONS_PER_PAGE,
+    totalCount
+  );
+
+  const collections = await listCollections(userId, {
     orderBy: [{ isFavorite: "desc" }, { updatedAt: "desc" }],
+    skip: pagination.skip,
+    take: pagination.take,
   });
+
+  return { collections, pagination };
 }
 
 /** Totals for the dashboard stats tiles, scoped to the given user. */
@@ -222,57 +254,82 @@ export async function getSidebarCollections(
   });
 }
 
-/** A single collection with its items, for the collection detail page. */
-export interface CollectionDetail {
+/** A collection's own fields, without its items. */
+export interface CollectionSummary {
   id: string;
   name: string;
   description: string | null;
   isFavorite: boolean;
-  /** The collection's items, most recently updated first. */
-  items: DashboardItem[];
 }
 
 /**
- * Fetch one of the given user's collections with its items, for
- * `/collections/[id]`.
+ * Fetch one of the given user's collections, without its items.
  *
  * Owner-scoped by `findFirst({ where: { id, userId } })`: a collection id that
  * doesn't exist and one belonging to another user both return `null`, so the
- * page 404s either way and never reveals which. Items are selected through the
- * shared `itemSelect` + `toDashboardItem` so the cards render exactly as they do
- * on the dashboard. The items come back already scoped, since a collection's
- * items belong to the collection's owner.
+ * page 404s either way and never reveals which.
  *
- * Wrapped in `cache()` so `generateMetadata` and the page body share one query
- * per request instead of each running it.
+ * Wrapped in `cache()` so `generateMetadata` (which only needs the name) and
+ * `getCollectionDetail` share one query per request instead of each running it.
  */
-export const getCollectionDetail = cache(
-  async (id: string, userId: string): Promise<CollectionDetail | null> => {
-    const collection = await prisma.collection.findFirst({
+export const getCollectionSummary = cache(
+  async (id: string, userId: string): Promise<CollectionSummary | null> => {
+    return prisma.collection.findFirst({
       where: { id, userId },
-      select: {
-        id: true,
-        name: true,
-        description: true,
-        isFavorite: true,
-        items: {
-          orderBy: { item: { updatedAt: "desc" } },
-          select: { item: { select: itemSelect } },
-        },
-      },
+      select: { id: true, name: true, description: true, isFavorite: true },
     });
-
-    if (!collection) return null;
-
-    return {
-      id: collection.id,
-      name: collection.name,
-      description: collection.description,
-      isFavorite: collection.isFavorite,
-      items: collection.items.map((link) => toDashboardItem(link.item)),
-    };
   }
 );
+
+/** A single collection with one page of its items, for the detail page. */
+export interface CollectionDetail extends CollectionSummary {
+  /** Just the requested page of items, most recently updated first. */
+  items: DashboardItem[];
+  pagination: PageInfo;
+}
+
+/**
+ * Fetch one of the given user's collections with one page of its items, for
+ * `/collections/[id]`. Returns null when the collection is unknown or belongs
+ * to someone else (see `getCollectionSummary`).
+ *
+ * The items are a separate `skip`/`take` query rather than a nested select, so
+ * a large collection never loads every item to show twenty. The count runs
+ * first because `buildPageInfo` clamps an out-of-range `?page=` to the last
+ * page, and the clamped page is what decides `skip`.
+ *
+ * The item query needs no owner filter of its own: the collection above is
+ * already owner-verified, and a collection's items belong to its owner. Items
+ * are selected through the shared `itemSelect` + `toDashboardItem` so the cards
+ * render exactly as they do on the dashboard.
+ */
+export async function getCollectionDetail(
+  id: string,
+  userId: string,
+  requestedPage = 1,
+): Promise<CollectionDetail | null> {
+  const collection = await getCollectionSummary(id, userId);
+  if (!collection) return null;
+
+  const totalCount = await prisma.itemCollection.count({
+    where: { collectionId: id },
+  });
+  const pagination = buildPageInfo(requestedPage, ITEMS_PER_PAGE, totalCount);
+
+  const links = await prisma.itemCollection.findMany({
+    where: { collectionId: id },
+    orderBy: { item: { updatedAt: "desc" } },
+    skip: pagination.skip,
+    take: pagination.take,
+    select: { item: { select: itemSelect } },
+  });
+
+  return {
+    ...collection,
+    items: links.map((link) => toDashboardItem(link.item)),
+    pagination,
+  };
+}
 
 /** A collection as an option in the item forms' collection picker. */
 export interface CollectionOption {

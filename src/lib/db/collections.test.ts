@@ -11,6 +11,8 @@ const {
   updateMany,
   deleteMany,
   queryRaw,
+  linkCount,
+  linkFindMany,
 } = vi.hoisted(() => ({
   findMany: vi.fn(),
   findFirst: vi.fn(),
@@ -20,6 +22,9 @@ const {
   updateMany: vi.fn(),
   deleteMany: vi.fn(),
   queryRaw: vi.fn(),
+  // The collection detail page pages its items off the ItemCollection join table.
+  linkCount: vi.fn(),
+  linkFindMany: vi.fn(),
 }));
 vi.mock("@/lib/prisma", () => ({
   prisma: {
@@ -32,6 +37,7 @@ vi.mock("@/lib/prisma", () => ({
       updateMany,
       deleteMany,
     },
+    itemCollection: { count: linkCount, findMany: linkFindMany },
     $queryRaw: queryRaw,
   },
 }));
@@ -53,6 +59,11 @@ import {
   getRecentCollections,
   getSidebarCollections,
 } from "@/lib/db/collections";
+import {
+  COLLECTIONS_PER_PAGE,
+  DASHBOARD_COLLECTIONS_LIMIT,
+  ITEMS_PER_PAGE,
+} from "@/lib/pagination";
 
 describe("getCollectionOptions", () => {
   beforeEach(() => {
@@ -92,6 +103,12 @@ describe("owner-scoped collection queries", () => {
     expect(findMany.mock.calls[0][0].where).toEqual({ userId: "user_1" });
     expect(findMany.mock.calls[0][0].take).toBe(3);
     expect(collections[0]).toMatchObject({ id: "col_1", itemCount: 0 });
+  });
+
+  it("getRecentCollections caps the dashboard grid by default", async () => {
+    findMany.mockResolvedValue([]);
+    await getRecentCollections("user_1");
+    expect(findMany.mock.calls[0][0].take).toBe(DASHBOARD_COLLECTIONS_LIMIT);
   });
 
   it("getRecentCollections derives counts and most-used-first types from the tally", async () => {
@@ -162,12 +179,15 @@ describe("owner-scoped collection queries", () => {
     expect(queryRaw).not.toHaveBeenCalled();
   });
 
-  it("getAllCollections scopes to the owner, favorites first, with no limit", async () => {
+  it("getAllCollections scopes to the owner, favorites first, one page at a time", async () => {
+    count.mockResolvedValue(1);
     findMany.mockResolvedValue([
       { id: "col_1", name: "React Patterns", description: null, isFavorite: true },
     ]);
 
     await getAllCollections("user_1");
+
+    expect(count.mock.calls[0][0].where).toEqual({ userId: "user_1" });
 
     const args = findMany.mock.calls[0][0];
     expect(args.where).toEqual({ userId: "user_1" });
@@ -175,11 +195,40 @@ describe("owner-scoped collection queries", () => {
       { isFavorite: "desc" },
       { updatedAt: "desc" },
     ]);
-    // The page lists every collection — a `take` here would silently truncate it.
-    expect(args.take).toBeUndefined();
+    // Only this page's rows — never the whole table.
+    expect(args.skip).toBe(0);
+    expect(args.take).toBe(COLLECTIONS_PER_PAGE);
+  });
+
+  it("getAllCollections skips into the requested page", async () => {
+    count.mockResolvedValue(45);
+    findMany.mockResolvedValue([]);
+
+    const { pagination } = await getAllCollections("user_1", 3);
+
+    expect(findMany.mock.calls[0][0].skip).toBe(2 * COLLECTIONS_PER_PAGE);
+    expect(pagination).toMatchObject({
+      page: 3,
+      totalCount: 45,
+      totalPages: 3,
+      hasPrev: true,
+      hasNext: false,
+    });
+  });
+
+  it("getAllCollections clamps a page past the end back to the last page", async () => {
+    count.mockResolvedValue(25);
+    findMany.mockResolvedValue([]);
+
+    const { pagination } = await getAllCollections("user_1", 99);
+
+    // Page 2 of 2, not an empty grid far past the end.
+    expect(pagination.page).toBe(2);
+    expect(findMany.mock.calls[0][0].skip).toBe(COLLECTIONS_PER_PAGE);
   });
 
   it("getAllCollections derives counts and most-used-first types from the tally", async () => {
+    count.mockResolvedValue(1);
     findMany.mockResolvedValue([
       { id: "col_1", name: "DevOps", description: null, isFavorite: false },
     ]);
@@ -188,10 +237,13 @@ describe("owner-scoped collection queries", () => {
       { collectionId: "col_1", typeId: "t_cmd", typeName: "command", typeColor: "#f97316", typeIcon: "Terminal", count: 1 },
     ]);
 
-    const [collection] = await getAllCollections("user_1");
+    const { collections } = await getAllCollections("user_1");
 
-    expect(collection.itemCount).toBe(3);
-    expect(collection.itemTypes.map((t) => t.name)).toEqual(["link", "command"]);
+    expect(collections[0].itemCount).toBe(3);
+    expect(collections[0].itemTypes.map((t) => t.name)).toEqual([
+      "link",
+      "command",
+    ]);
   });
 });
 
@@ -215,8 +267,17 @@ describe("getCollectionDetail", () => {
     tags: [{ name: "react" }, { name: "hooks" }],
   };
 
+  const collectionRow = {
+    id: "col_1",
+    name: "React Patterns",
+    description: "Hooks and helpers",
+    isFavorite: true,
+  };
+
   beforeEach(() => {
     vi.clearAllMocks();
+    linkCount.mockResolvedValue(0);
+    linkFindMany.mockResolvedValue([]);
   });
 
   it("scopes the lookup to both the id and the owner", async () => {
@@ -230,29 +291,22 @@ describe("getCollectionDetail", () => {
     });
   });
 
-  it("returns null for a missing or foreign collection", async () => {
+  it("returns null for a missing or foreign collection without touching items", async () => {
     findFirst.mockResolvedValue(null);
 
     expect(await getCollectionDetail("col_other", "user_1")).toBeNull();
+    expect(linkCount).not.toHaveBeenCalled();
+    expect(linkFindMany).not.toHaveBeenCalled();
   });
 
   it("maps the collection's items through the shared card mapper", async () => {
-    findFirst.mockResolvedValue({
-      id: "col_1",
-      name: "React Patterns",
-      description: "Hooks and helpers",
-      isFavorite: true,
-      items: [{ item: rawItem }],
-    });
+    findFirst.mockResolvedValue(collectionRow);
+    linkCount.mockResolvedValue(1);
+    linkFindMany.mockResolvedValue([{ item: rawItem }]);
 
     const collection = await getCollectionDetail("col_1", "user_1");
 
-    expect(collection).toMatchObject({
-      id: "col_1",
-      name: "React Patterns",
-      description: "Hooks and helpers",
-      isFavorite: true,
-    });
+    expect(collection).toMatchObject(collectionRow);
     expect(collection?.items).toHaveLength(1);
     expect(collection?.items[0]).toMatchObject({
       id: "item_1",
@@ -265,34 +319,52 @@ describe("getCollectionDetail", () => {
     });
   });
 
-  it("orders items most recently updated first", async () => {
-    findFirst.mockResolvedValue({
-      id: "col_1",
-      name: "React Patterns",
-      description: null,
-      isFavorite: false,
-      items: [],
-    });
+  it("fetches only the requested page of items, most recently updated first", async () => {
+    findFirst.mockResolvedValue(collectionRow);
+    linkCount.mockResolvedValue(50);
 
-    await getCollectionDetail("col_1", "user_1");
+    const collection = await getCollectionDetail("col_1", "user_1", 2);
 
-    expect(findFirst.mock.calls[0][0].select.items.orderBy).toEqual({
-      item: { updatedAt: "desc" },
+    expect(linkCount.mock.calls[0][0].where).toEqual({ collectionId: "col_1" });
+
+    const args = linkFindMany.mock.calls[0][0];
+    expect(args.where).toEqual({ collectionId: "col_1" });
+    expect(args.orderBy).toEqual({ item: { updatedAt: "desc" } });
+    // A 50-item collection must not load all 50 to render 20.
+    expect(args.skip).toBe(ITEMS_PER_PAGE);
+    expect(args.take).toBe(ITEMS_PER_PAGE);
+    expect(collection?.pagination).toMatchObject({
+      page: 2,
+      totalCount: 50,
+      totalPages: 3,
+      hasPrev: true,
+      hasNext: true,
     });
   });
 
+  it("clamps a page past the end back to the last page", async () => {
+    findFirst.mockResolvedValue(collectionRow);
+    linkCount.mockResolvedValue(25);
+
+    const collection = await getCollectionDetail("col_1", "user_1", 99);
+
+    expect(collection?.pagination.page).toBe(2);
+    expect(linkFindMany.mock.calls[0][0].skip).toBe(ITEMS_PER_PAGE);
+  });
+
   it("returns an empty item list for a collection with no items", async () => {
-    findFirst.mockResolvedValue({
-      id: "col_1",
-      name: "Empty",
-      description: null,
-      isFavorite: false,
-      items: [],
-    });
+    findFirst.mockResolvedValue({ ...collectionRow, name: "Empty" });
 
     const collection = await getCollectionDetail("col_1", "user_1");
 
     expect(collection?.items).toEqual([]);
+    expect(collection?.pagination).toMatchObject({
+      page: 1,
+      totalCount: 0,
+      totalPages: 1,
+      hasPrev: false,
+      hasNext: false,
+    });
   });
 });
 

@@ -11,6 +11,7 @@ import { ImageCardButton } from "@/components/dashboard/ImageCardButton";
 import { FileListRow } from "@/components/dashboard/FileListRow";
 import { ItemDrawerProvider } from "@/components/dashboard/ItemDrawer";
 import { ItemTypeIcon } from "@/components/dashboard/ItemTypeIcon";
+import { Pagination } from "@/components/dashboard/Pagination";
 import {
   getItemsByType,
   getSidebarItemTypes,
@@ -18,6 +19,7 @@ import {
 } from "@/lib/db/items";
 import { getSidebarCollections } from "@/lib/db/collections";
 import { getCurrentUser } from "@/lib/db/user";
+import { parsePageParam } from "@/lib/pagination";
 
 export async function generateMetadata({
   params,
@@ -32,13 +34,16 @@ export async function generateMetadata({
 
 export default async function ItemsByTypePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ type: string }>;
+  searchParams: Promise<{ page?: string | string[] }>;
 }) {
   // Read live data per request rather than baking it in at build.
   await connection();
 
   const { type } = await params;
+  const requestedPage = parsePageParam((await searchParams).page);
 
   // Every query below is scoped to this user, so resolve them first. The proxy
   // guarantees a session on /items/*; redirect defensively rather than render an
@@ -47,7 +52,7 @@ export default async function ItemsByTypePage({
   if (!currentUser) redirect("/sign-in");
 
   const [listing, sidebarItemTypes, sidebarCollections] = await Promise.all([
-    getItemsByType(type, currentUser.id),
+    getItemsByType(type, currentUser.id, requestedPage),
     getSidebarItemTypes(currentUser.id),
     getSidebarCollections(currentUser.id),
   ]);
@@ -94,7 +99,8 @@ export default async function ItemsByTypePage({
                   />
                 }
                 title={`All ${listing.type.name}`}
-                count={listing.items.length}
+                // The total across all pages, not just the items on this one.
+                count={listing.pagination.totalCount}
               />
               {listing.items.length > 0 ? (
                 isImageGallery ? (
@@ -121,6 +127,12 @@ export default async function ItemsByTypePage({
                   No {listing.type.name.toLowerCase()} yet.
                 </p>
               )}
+
+              <Pagination
+                pagination={listing.pagination}
+                basePath={`/items/${listing.type.slug}`}
+                label={`${listing.type.name} pages`}
+              />
             </section>
           </main>
         </div>

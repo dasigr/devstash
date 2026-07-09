@@ -10,9 +10,15 @@ import { SectionHeader } from "@/components/dashboard/SectionHeader";
 import { ItemCardButton } from "@/components/dashboard/ItemCardButton";
 import { ItemDrawerProvider } from "@/components/dashboard/ItemDrawer";
 import { CollectionDetailActions } from "@/components/dashboard/CollectionDetailActions";
-import { getCollectionDetail, getSidebarCollections } from "@/lib/db/collections";
+import { Pagination } from "@/components/dashboard/Pagination";
+import {
+  getCollectionDetail,
+  getCollectionSummary,
+  getSidebarCollections,
+} from "@/lib/db/collections";
 import { getSidebarItemTypes } from "@/lib/db/items";
 import { getCurrentUser } from "@/lib/db/user";
+import { parsePageParam } from "@/lib/pagination";
 
 export async function generateMetadata({
   params,
@@ -26,19 +32,24 @@ export async function generateMetadata({
   const currentUser = await getCurrentUser();
   if (!currentUser) return { title: "Collection" };
 
-  const collection = await getCollectionDetail(id, currentUser.id);
+  // Only the name is needed here — the summary is cached and shared with the
+  // page's own `getCollectionDetail`, so this costs no extra query.
+  const collection = await getCollectionSummary(id, currentUser.id);
   return { title: collection ? collection.name : "Collection" };
 }
 
 export default async function CollectionDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ page?: string | string[] }>;
 }) {
   // Read live data per request rather than baking it in at build.
   await connection();
 
   const { id } = await params;
+  const requestedPage = parsePageParam((await searchParams).page);
 
   // Every query below is scoped to this user, so resolve them first. The proxy
   // guarantees a session on /collections/*; redirect defensively rather than
@@ -47,7 +58,7 @@ export default async function CollectionDetailPage({
   if (!currentUser) redirect("/sign-in");
 
   const [collection, sidebarItemTypes, sidebarCollections] = await Promise.all([
-    getCollectionDetail(id, currentUser.id),
+    getCollectionDetail(id, currentUser.id, requestedPage),
     getSidebarItemTypes(currentUser.id),
     getSidebarCollections(currentUser.id),
   ]);
@@ -56,7 +67,9 @@ export default async function CollectionDetailPage({
   // come back null, so both 404 and neither confirms the collection exists.
   if (!collection) notFound();
 
-  // The collection's primary item type tints the heading icon, matching its card.
+  // The first item's type tints the heading icon, matching its card. That's the
+  // first item *of this page*, so the tint can shift between pages — the card's
+  // own tint (a most-used-type tally) stays stable either way.
   const primaryColor = collection.items[0]?.itemType.color;
 
   return (
@@ -104,7 +117,8 @@ export default async function CollectionDetailPage({
                 <SectionHeader
                   icon={<FolderOpen className="size-4" />}
                   title="Items"
-                  count={collection.items.length}
+                  // The total across all pages, not just the cards on this one.
+                  count={collection.pagination.totalCount}
                 />
                 {collection.items.length > 0 ? (
                   // A collection holds mixed item types, so every item renders as
@@ -119,6 +133,12 @@ export default async function CollectionDetailPage({
                     No items in this collection yet.
                   </p>
                 )}
+
+                <Pagination
+                  pagination={collection.pagination}
+                  basePath={`/collections/${collection.id}`}
+                  label="Collection item pages"
+                />
               </section>
             </main>
           </div>

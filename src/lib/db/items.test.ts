@@ -51,6 +51,10 @@ import {
   getSidebarItemTypes,
   updateItem,
 } from "@/lib/db/items";
+import {
+  DASHBOARD_RECENT_ITEMS_LIMIT,
+  ITEMS_PER_PAGE,
+} from "@/lib/pagination";
 
 /** A raw item matching the shape `getItemDetail` selects from Prisma. */
 function rawItem(overrides: Record<string, unknown> = {}) {
@@ -615,6 +619,12 @@ describe("owner-scoped read queries", () => {
     expect(findMany.mock.calls[0][0].take).toBe(5);
   });
 
+  it("getRecentItems caps the dashboard grid by default", async () => {
+    findMany.mockResolvedValue([]);
+    await getRecentItems("user_1");
+    expect(findMany.mock.calls[0][0].take).toBe(DASHBOARD_RECENT_ITEMS_LIMIT);
+  });
+
   it("getItemStats counts only the owner's items, total and favorites", async () => {
     count.mockResolvedValueOnce(7).mockResolvedValueOnce(2);
     expect(await getItemStats("user_1")).toEqual({ total: 7, favorites: 2 });
@@ -653,14 +663,15 @@ describe("owner-scoped read queries", () => {
       color: "#3b82f6",
       icon: "Code",
     });
+    count.mockResolvedValue(1);
     findMany.mockResolvedValue([rawListItem()]);
 
     const listing = await getItemsByType("snippets", "user_1");
 
-    expect(findMany.mock.calls[0][0].where).toEqual({
-      userId: "user_1",
-      itemTypeId: "type_snippet",
-    });
+    const where = { userId: "user_1", itemTypeId: "type_snippet" };
+    // The count must be scoped exactly like the rows, or the page controls lie.
+    expect(count.mock.calls[0][0].where).toEqual(where);
+    expect(findMany.mock.calls[0][0].where).toEqual(where);
     expect(listing?.type.slug).toBe("snippets");
     expect(listing?.items).toHaveLength(1);
   });
@@ -669,6 +680,7 @@ describe("owner-scoped read queries", () => {
     typeFindFirst.mockResolvedValue(null);
     expect(await getItemsByType("bogus", "user_1")).toBeNull();
     expect(findMany).not.toHaveBeenCalled();
+    expect(count).not.toHaveBeenCalled();
   });
 
   it("getItemsByType returns an empty listing (not null) when the user owns none", async () => {
@@ -678,10 +690,60 @@ describe("owner-scoped read queries", () => {
       color: "#fde047",
       icon: "StickyNote",
     });
+    count.mockResolvedValue(0);
     findMany.mockResolvedValue([]);
 
     const listing = await getItemsByType("notes", "user_1");
     expect(listing?.items).toEqual([]);
     expect(listing?.type.name).toBe("Notes");
+    expect(listing?.pagination).toMatchObject({
+      page: 1,
+      totalCount: 0,
+      totalPages: 1,
+      hasPrev: false,
+      hasNext: false,
+    });
+  });
+
+  it("getItemsByType fetches only the requested page of items", async () => {
+    typeFindFirst.mockResolvedValue({
+      id: "type_command",
+      name: "command",
+      color: "#f97316",
+      icon: "Terminal",
+    });
+    count.mockResolvedValue(50);
+    findMany.mockResolvedValue([]);
+
+    const listing = await getItemsByType("commands", "user_1", 2);
+
+    const args = findMany.mock.calls[0][0];
+    // A 50-item type must not load all 50 rows to render 20.
+    expect(args.skip).toBe(ITEMS_PER_PAGE);
+    expect(args.take).toBe(ITEMS_PER_PAGE);
+    expect(args.orderBy).toEqual({ updatedAt: "desc" });
+    expect(listing?.pagination).toMatchObject({
+      page: 2,
+      totalCount: 50,
+      totalPages: 3,
+      hasPrev: true,
+      hasNext: true,
+    });
+  });
+
+  it("getItemsByType clamps a page past the end back to the last page", async () => {
+    typeFindFirst.mockResolvedValue({
+      id: "type_link",
+      name: "link",
+      color: "#10b981",
+      icon: "Link",
+    });
+    count.mockResolvedValue(25);
+    findMany.mockResolvedValue([]);
+
+    const listing = await getItemsByType("links", "user_1", 99);
+
+    expect(listing?.pagination.page).toBe(2);
+    expect(findMany.mock.calls[0][0].skip).toBe(ITEMS_PER_PAGE);
   });
 });

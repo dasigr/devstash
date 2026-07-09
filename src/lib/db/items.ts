@@ -2,6 +2,12 @@ import { cache } from "react";
 
 import { prisma } from "@/lib/prisma";
 import { deleteFromR2, r2KeyFromUrl } from "@/lib/r2";
+import {
+  DASHBOARD_RECENT_ITEMS_LIMIT,
+  ITEMS_PER_PAGE,
+  buildPageInfo,
+} from "@/lib/pagination";
+import type { PageInfo } from "@/lib/pagination";
 import type { ContentType, Prisma } from "@/generated/prisma/client";
 import type {
   CreateItemInput,
@@ -139,7 +145,7 @@ export async function getPinnedItems(userId: string): Promise<DashboardItem[]> {
 /** The given user's most recently updated items, for the Recent Items grid. */
 export async function getRecentItems(
   userId: string,
-  limit = 10,
+  limit = DASHBOARD_RECENT_ITEMS_LIMIT,
 ): Promise<DashboardItem[]> {
   const items = await prisma.item.findMany({
     where: { userId },
@@ -553,7 +559,9 @@ export interface ItemTypeListing {
     icon: string;
     isPro: boolean;
   };
+  /** Just the requested page of items, not every item of this type. */
   items: DashboardItem[];
+  pagination: PageInfo;
 }
 
 /**
@@ -587,23 +595,38 @@ export const getSystemItemType = cache(
 );
 
 /**
- * Resolve a plural /items slug to its system item type and **the given user's**
- * items of that type, most recently updated first. Returns null when the slug
- * doesn't match a system type, so the page can render a 404. A valid slug the
- * user has no items for returns an empty `items` array (an empty state, not a
- * 404).
+ * Resolve a plural /items slug to its system item type and one page of **the
+ * given user's** items of that type, most recently updated first. Returns null
+ * when the slug doesn't match a system type, so the page can render a 404. A
+ * valid slug the user has no items for returns an empty `items` array (an empty
+ * state, not a 404).
+ *
+ * Only the requested page is fetched (`skip`/`take`); the count is a separate
+ * indexed query. It runs before the rows because `buildPageInfo` clamps an
+ * out-of-range `?page=` to the last page, and the clamped page is what decides
+ * `skip`.
  */
 export const getItemsByType = cache(
-  async (slug: string, userId: string): Promise<ItemTypeListing | null> => {
+  async (
+    slug: string,
+    userId: string,
+    requestedPage = 1,
+  ): Promise<ItemTypeListing | null> => {
     const type = await getSystemItemType(slug);
     if (!type) return null;
 
+    const where = { userId, itemTypeId: type.id };
+    const totalCount = await prisma.item.count({ where });
+    const pagination = buildPageInfo(requestedPage, ITEMS_PER_PAGE, totalCount);
+
     const items = await prisma.item.findMany({
-      where: { userId, itemTypeId: type.id },
+      where,
       orderBy: { updatedAt: "desc" },
+      skip: pagination.skip,
+      take: pagination.take,
       select: itemSelect,
     });
 
-    return { type, items: items.map(toDashboardItem) };
+    return { type, items: items.map(toDashboardItem), pagination };
   }
 );
