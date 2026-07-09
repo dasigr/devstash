@@ -24,6 +24,10 @@ export interface DashboardItem {
   preview: string;
   /** Public file URL for file/image items (R2); null for text/url items. */
   fileUrl: string | null;
+  /** Original filename for file/image items; null for text/url items. */
+  fileName: string | null;
+  /** File size in bytes for file/image items; null for text/url items. */
+  fileSize: number | null;
   tags: string[];
   isPinned: boolean;
   isFavorite: boolean;
@@ -41,6 +45,7 @@ const itemSelect = {
   url: true,
   fileUrl: true,
   fileName: true,
+  fileSize: true,
   description: true,
   isPinned: true,
   isFavorite: true,
@@ -57,6 +62,7 @@ type RawItem = {
   url: string | null;
   fileUrl: string | null;
   fileName: string | null;
+  fileSize: number | null;
   description: string | null;
   isPinned: boolean;
   isFavorite: boolean;
@@ -101,6 +107,8 @@ function toDashboardItem(item: RawItem): DashboardItem {
     title: item.title,
     preview: itemPreview(item),
     fileUrl: item.fileUrl,
+    fileName: item.fileName,
+    fileSize: item.fileSize,
     tags: item.tags.map((tag) => tag.name),
     isPinned: item.isPinned,
     isFavorite: item.isFavorite,
