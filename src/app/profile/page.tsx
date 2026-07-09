@@ -9,8 +9,6 @@ import { cn } from "@/lib/utils";
 import { UserAvatar } from "@/components/user/UserAvatar";
 import { SignOutButton } from "@/components/auth/SignOutButton";
 import { ItemTypeIcon } from "@/components/dashboard/ItemTypeIcon";
-import { ChangePasswordForm } from "@/components/profile/ChangePasswordForm";
-import { DeleteAccountDialog } from "@/components/profile/DeleteAccountDialog";
 import { getProfile, getProfileStats } from "@/lib/db/profile";
 
 export const metadata: Metadata = {
@@ -36,7 +34,7 @@ export default async function ProfilePage() {
   const stats = await getProfileStats(user.id);
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-2xl flex-col gap-6 px-4 py-10">
+    <div className="mx-auto flex min-h-screen w-full max-w-4xl flex-col gap-6 px-4 py-10">
       <Link
         href="/dashboard"
         className={cn(
@@ -104,7 +102,7 @@ export default async function ProfilePage() {
         <h3 className="mt-6 text-sm font-medium text-muted-foreground">
           By type
         </h3>
-        <ul className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <ul className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {stats.byType.map((type) => (
             <li
               key={type.id}
@@ -124,35 +122,6 @@ export default async function ProfilePage() {
             </li>
           ))}
         </ul>
-      </section>
-
-      {/* Change password — email/password accounts only */}
-      {user.hasPassword && (
-        <section className="rounded-xl border border-border bg-card p-6">
-          <h2 className="text-base font-semibold text-foreground">
-            Change password
-          </h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Update the password you use to sign in.
-          </p>
-          <div className="mt-4">
-            <ChangePasswordForm />
-          </div>
-        </section>
-      )}
-
-      {/* Danger zone */}
-      <section className="rounded-xl border border-destructive/40 bg-card p-6">
-        <h2 className="text-base font-semibold text-foreground">
-          Delete account
-        </h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Permanently delete your account and all of your items and collections.
-          This cannot be undone.
-        </p>
-        <div className="mt-4">
-          <DeleteAccountDialog />
-        </div>
       </section>
     </div>
   );

@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
-import { LogOut, User as UserIcon } from "lucide-react";
+import { LogOut, Settings, User as UserIcon } from "lucide-react";
 
 import {
   DropdownMenu,
@@ -28,7 +28,8 @@ interface SidebarUserProps {
 
 /**
  * User area at the bottom of the sidebar. Clicking the avatar/row opens an
- * upward dropdown with a link to the profile page and a sign-out action.
+ * upward dropdown with links to the profile and settings pages, plus a
+ * sign-out action.
  */
 export function SidebarUser({ user, collapsed }: SidebarUserProps) {
   const router = useRouter();
@@ -76,6 +77,10 @@ export function SidebarUser({ user, collapsed }: SidebarUserProps) {
         <DropdownMenuItem onClick={() => router.push("/profile")}>
           <UserIcon />
           Profile
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => router.push("/settings")}>
+          <Settings />
+          Settings
         </DropdownMenuItem>
         <DropdownMenuItem
           variant="destructive"
