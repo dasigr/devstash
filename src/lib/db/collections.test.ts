@@ -2,15 +2,16 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock the Prisma client so the queries run without a database. `vi.hoisted`
 // lets the mock factory reference the spies (vi.mock is hoisted above imports).
-const { findMany, count, create, queryRaw } = vi.hoisted(() => ({
+const { findMany, findFirst, count, create, queryRaw } = vi.hoisted(() => ({
   findMany: vi.fn(),
+  findFirst: vi.fn(),
   count: vi.fn(),
   create: vi.fn(),
   queryRaw: vi.fn(),
 }));
 vi.mock("@/lib/prisma", () => ({
   prisma: {
-    collection: { findMany, count, create },
+    collection: { findMany, findFirst, count, create },
     $queryRaw: queryRaw,
   },
 }));
@@ -23,6 +24,8 @@ vi.mock("@/generated/prisma/client", () => ({
 
 import {
   createCollection,
+  getAllCollections,
+  getCollectionDetail,
   getCollectionOptions,
   getCollectionStats,
   getRecentCollections,
@@ -135,6 +138,139 @@ describe("owner-scoped collection queries", () => {
 
     expect(await getRecentCollections("user_1")).toEqual([]);
     expect(queryRaw).not.toHaveBeenCalled();
+  });
+
+  it("getAllCollections scopes to the owner, favorites first, with no limit", async () => {
+    findMany.mockResolvedValue([
+      { id: "col_1", name: "React Patterns", description: null, isFavorite: true },
+    ]);
+
+    await getAllCollections("user_1");
+
+    const args = findMany.mock.calls[0][0];
+    expect(args.where).toEqual({ userId: "user_1" });
+    expect(args.orderBy).toEqual([
+      { isFavorite: "desc" },
+      { updatedAt: "desc" },
+    ]);
+    // The page lists every collection — a `take` here would silently truncate it.
+    expect(args.take).toBeUndefined();
+  });
+
+  it("getAllCollections derives counts and most-used-first types from the tally", async () => {
+    findMany.mockResolvedValue([
+      { id: "col_1", name: "DevOps", description: null, isFavorite: false },
+    ]);
+    queryRaw.mockResolvedValue([
+      { collectionId: "col_1", typeId: "t_link", typeName: "link", typeColor: "#10b981", typeIcon: "Link", count: 2 },
+      { collectionId: "col_1", typeId: "t_cmd", typeName: "command", typeColor: "#f97316", typeIcon: "Terminal", count: 1 },
+    ]);
+
+    const [collection] = await getAllCollections("user_1");
+
+    expect(collection.itemCount).toBe(3);
+    expect(collection.itemTypes.map((t) => t.name)).toEqual(["link", "command"]);
+  });
+});
+
+// The detail page must never render another user's collection, and must not
+// reveal whether a collection it can't show actually exists.
+describe("getCollectionDetail", () => {
+  const rawItem = {
+    id: "item_1",
+    title: "useDebounce hook",
+    contentType: "TEXT",
+    content: "export function useDebounce() {}",
+    url: null,
+    fileUrl: null,
+    fileName: null,
+    fileSize: null,
+    description: null,
+    isPinned: true,
+    isFavorite: false,
+    updatedAt: new Date(),
+    itemType: { id: "t_snip", name: "snippet", color: "#3b82f6", icon: "Code" },
+    tags: [{ name: "react" }, { name: "hooks" }],
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("scopes the lookup to both the id and the owner", async () => {
+    findFirst.mockResolvedValue(null);
+
+    await getCollectionDetail("col_1", "user_1");
+
+    expect(findFirst.mock.calls[0][0].where).toEqual({
+      id: "col_1",
+      userId: "user_1",
+    });
+  });
+
+  it("returns null for a missing or foreign collection", async () => {
+    findFirst.mockResolvedValue(null);
+
+    expect(await getCollectionDetail("col_other", "user_1")).toBeNull();
+  });
+
+  it("maps the collection's items through the shared card mapper", async () => {
+    findFirst.mockResolvedValue({
+      id: "col_1",
+      name: "React Patterns",
+      description: "Hooks and helpers",
+      isFavorite: true,
+      items: [{ item: rawItem }],
+    });
+
+    const collection = await getCollectionDetail("col_1", "user_1");
+
+    expect(collection).toMatchObject({
+      id: "col_1",
+      name: "React Patterns",
+      description: "Hooks and helpers",
+      isFavorite: true,
+    });
+    expect(collection?.items).toHaveLength(1);
+    expect(collection?.items[0]).toMatchObject({
+      id: "item_1",
+      title: "useDebounce hook",
+      // Preview is derived from the content type, and tags are flattened.
+      preview: "export function useDebounce() {}",
+      tags: ["react", "hooks"],
+      updatedAt: "just now",
+      itemType: { name: "snippet", color: "#3b82f6" },
+    });
+  });
+
+  it("orders items most recently updated first", async () => {
+    findFirst.mockResolvedValue({
+      id: "col_1",
+      name: "React Patterns",
+      description: null,
+      isFavorite: false,
+      items: [],
+    });
+
+    await getCollectionDetail("col_1", "user_1");
+
+    expect(findFirst.mock.calls[0][0].select.items.orderBy).toEqual({
+      item: { updatedAt: "desc" },
+    });
+  });
+
+  it("returns an empty item list for a collection with no items", async () => {
+    findFirst.mockResolvedValue({
+      id: "col_1",
+      name: "Empty",
+      description: null,
+      isFavorite: false,
+      items: [],
+    });
+
+    const collection = await getCollectionDetail("col_1", "user_1");
+
+    expect(collection?.items).toEqual([]);
   });
 });
 
