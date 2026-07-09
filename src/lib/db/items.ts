@@ -71,8 +71,17 @@ type RawItem = {
   tags: { name: string }[];
 };
 
+/** The fields `itemPreview` needs — kept structural so lean queries can reuse it. */
+export interface PreviewSource {
+  contentType: ContentType;
+  content: string | null;
+  url: string | null;
+  fileName: string | null;
+  description: string | null;
+}
+
 /** Pick the preview text for a card based on the item's content type. */
-function itemPreview(item: RawItem): string {
+export function itemPreview(item: PreviewSource): string {
   switch (item.contentType) {
     case "URL":
       return item.url ?? item.description ?? "";

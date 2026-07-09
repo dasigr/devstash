@@ -6,6 +6,7 @@ import { FolderOpen } from "lucide-react";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { SidebarProvider } from "@/components/dashboard/sidebar-context";
 import { TopBar } from "@/components/dashboard/TopBar";
+import { ItemDrawerProvider } from "@/components/dashboard/ItemDrawer";
 import { SectionHeader } from "@/components/dashboard/SectionHeader";
 import { CollectionCard } from "@/components/dashboard/CollectionCard";
 import { getAllCollections, getSidebarCollections } from "@/lib/db/collections";
@@ -34,6 +35,8 @@ export default async function CollectionsPage() {
 
   return (
     <SidebarProvider>
+      {/* The TopBar's command palette opens items in the drawer. */}
+      <ItemDrawerProvider>
       <div className="flex h-full min-h-screen bg-background text-foreground">
         <Sidebar
           itemTypes={sidebarItemTypes}
@@ -71,6 +74,7 @@ export default async function CollectionsPage() {
           </main>
         </div>
       </div>
+      </ItemDrawerProvider>
     </SidebarProvider>
   );
 }
