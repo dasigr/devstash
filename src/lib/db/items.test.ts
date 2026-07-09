@@ -2,19 +2,29 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock the Prisma client so the query runs without a database. `vi.hoisted`
 // lets the mock factory reference the spy (vi.mock is hoisted above imports).
-const { findFirst, update, deleteMany, create, typeFindFirst } = vi.hoisted(
-  () => ({
-    findFirst: vi.fn(),
-    update: vi.fn(),
-    deleteMany: vi.fn(),
-    create: vi.fn(),
-    typeFindFirst: vi.fn(),
-  }),
-);
+const {
+  findFirst,
+  update,
+  deleteMany,
+  create,
+  findMany,
+  count,
+  typeFindFirst,
+  typeFindMany,
+} = vi.hoisted(() => ({
+  findFirst: vi.fn(),
+  update: vi.fn(),
+  deleteMany: vi.fn(),
+  create: vi.fn(),
+  findMany: vi.fn(),
+  count: vi.fn(),
+  typeFindFirst: vi.fn(),
+  typeFindMany: vi.fn(),
+}));
 vi.mock("@/lib/prisma", () => ({
   prisma: {
-    item: { findFirst, update, deleteMany, create },
-    itemType: { findFirst: typeFindFirst },
+    item: { findFirst, update, deleteMany, create, findMany, count },
+    itemType: { findFirst: typeFindFirst, findMany: typeFindMany },
   },
 }));
 
@@ -31,6 +41,11 @@ import {
   deleteItem,
   getItemDetail,
   getItemFile,
+  getItemStats,
+  getItemsByType,
+  getPinnedItems,
+  getRecentItems,
+  getSidebarItemTypes,
   updateItem,
 } from "@/lib/db/items";
 
@@ -442,5 +457,125 @@ describe("getItemFile", () => {
       fileUrl: "https://x/y",
       fileName: "download",
     });
+  });
+});
+
+/** A raw item matching the shape the list queries (`itemSelect`) return. */
+function rawListItem(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "item_1",
+    title: "useDebounce hook",
+    contentType: "TEXT",
+    content: "export function useDebounce() {}",
+    url: null,
+    fileUrl: null,
+    fileName: null,
+    fileSize: null,
+    description: null,
+    isPinned: true,
+    isFavorite: false,
+    updatedAt: new Date(),
+    itemType: {
+      id: "type_snippet",
+      name: "snippet",
+      color: "#3b82f6",
+      icon: "Code",
+    },
+    tags: [{ name: "react" }],
+    ...overrides,
+  };
+}
+
+// These queries back the dashboard, sidebar, and /items/[type] listing. Each one
+// must filter by userId or a signed-in user sees other people's stash.
+describe("owner-scoped read queries", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("getPinnedItems scopes to the owner alongside isPinned", async () => {
+    findMany.mockResolvedValue([rawListItem()]);
+    await getPinnedItems("user_1");
+    expect(findMany.mock.calls[0][0].where).toEqual({
+      userId: "user_1",
+      isPinned: true,
+    });
+  });
+
+  it("getRecentItems scopes to the owner and honors the limit", async () => {
+    findMany.mockResolvedValue([]);
+    await getRecentItems("user_1", 5);
+    expect(findMany.mock.calls[0][0].where).toEqual({ userId: "user_1" });
+    expect(findMany.mock.calls[0][0].take).toBe(5);
+  });
+
+  it("getItemStats counts only the owner's items, total and favorites", async () => {
+    count.mockResolvedValueOnce(7).mockResolvedValueOnce(2);
+    expect(await getItemStats("user_1")).toEqual({ total: 7, favorites: 2 });
+    expect(count.mock.calls[0][0].where).toEqual({ userId: "user_1" });
+    expect(count.mock.calls[1][0].where).toEqual({
+      userId: "user_1",
+      isFavorite: true,
+    });
+  });
+
+  it("getSidebarItemTypes filters the relation count by owner, not the types", async () => {
+    typeFindMany.mockResolvedValue([
+      {
+        id: "type_snippet",
+        name: "snippet",
+        color: "#3b82f6",
+        icon: "Code",
+        _count: { items: 3 },
+      },
+    ]);
+    const types = await getSidebarItemTypes("user_1");
+
+    const args = typeFindMany.mock.calls[0][0];
+    // System types are global — the type rows themselves aren't owner-filtered.
+    expect(args.where).toEqual({ isSystem: true });
+    expect(args.select._count.select.items).toEqual({
+      where: { userId: "user_1" },
+    });
+    expect(types[0].count).toBe(3);
+  });
+
+  it("getItemsByType scopes items to the owner and the resolved type", async () => {
+    typeFindFirst.mockResolvedValue({
+      id: "type_snippet",
+      name: "snippet",
+      color: "#3b82f6",
+      icon: "Code",
+    });
+    findMany.mockResolvedValue([rawListItem()]);
+
+    const listing = await getItemsByType("snippets", "user_1");
+
+    expect(findMany.mock.calls[0][0].where).toEqual({
+      userId: "user_1",
+      itemTypeId: "type_snippet",
+    });
+    expect(listing?.type.slug).toBe("snippets");
+    expect(listing?.items).toHaveLength(1);
+  });
+
+  it("getItemsByType returns null for an unknown slug without querying items", async () => {
+    typeFindFirst.mockResolvedValue(null);
+    expect(await getItemsByType("bogus", "user_1")).toBeNull();
+    expect(findMany).not.toHaveBeenCalled();
+  });
+
+  it("getItemsByType returns an empty listing (not null) when the user owns none", async () => {
+    typeFindFirst.mockResolvedValue({
+      id: "type_note",
+      name: "note",
+      color: "#fde047",
+      icon: "StickyNote",
+    });
+    findMany.mockResolvedValue([]);
+
+    const listing = await getItemsByType("notes", "user_1");
+    expect(listing?.items).toEqual([]);
+    expect(listing?.type.name).toBe("Notes");
   });
 });

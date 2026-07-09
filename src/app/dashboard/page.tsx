@@ -9,6 +9,7 @@ import { CollectionCard } from "@/components/dashboard/CollectionCard";
 import { ItemCardButton } from "@/components/dashboard/ItemCardButton";
 import { ItemDrawerProvider } from "@/components/dashboard/ItemDrawer";
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { connection } from "next/server";
 
 import {
@@ -32,6 +33,12 @@ export default async function DashboardPage() {
   // Read live data per request rather than baking it in at build.
   await connection();
 
+  // Every query below is scoped to this user, so resolve them first. The proxy
+  // guarantees a session on /dashboard; redirect defensively rather than render
+  // an unscoped page.
+  const currentUser = await getCurrentUser();
+  if (!currentUser) redirect("/sign-in");
+
   const [
     collections,
     collectionStats,
@@ -40,25 +47,15 @@ export default async function DashboardPage() {
     itemStats,
     sidebarItemTypes,
     sidebarCollections,
-    currentUser,
   ] = await Promise.all([
-    getRecentCollections(),
-    getCollectionStats(),
-    getPinnedItems(),
-    getRecentItems(),
-    getItemStats(),
-    getSidebarItemTypes(),
-    getSidebarCollections(),
-    getCurrentUser(),
+    getRecentCollections(currentUser.id),
+    getCollectionStats(currentUser.id),
+    getPinnedItems(currentUser.id),
+    getRecentItems(currentUser.id),
+    getItemStats(currentUser.id),
+    getSidebarItemTypes(currentUser.id),
+    getSidebarCollections(currentUser.id),
   ]);
-
-  // The proxy guarantees a session on /dashboard; fall back defensively.
-  const sidebarUser = currentUser ?? {
-    name: null,
-    email: null,
-    image: null,
-    isPro: false,
-  };
 
   return (
     <SidebarProvider>
@@ -67,7 +64,7 @@ export default async function DashboardPage() {
         <Sidebar
           itemTypes={sidebarItemTypes}
           collections={sidebarCollections}
-          user={sidebarUser}
+          user={currentUser}
         />
 
         {/* Main column: top bar + content */}

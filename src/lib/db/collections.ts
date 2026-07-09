@@ -27,6 +27,9 @@ interface TypeCountRow {
  * `itemTypeId` lives on `Item` (not the join table), so this joins
  * `ItemCollection -> Item -> ItemType`; Prisma `groupBy` can't span that join,
  * hence the raw grouped query.
+ *
+ * No owner filter here: callers only ever pass collection ids they've already
+ * scoped to the owner.
  */
 async function getTypeCountsByCollection(
   collectionIds: string[]
@@ -74,14 +77,17 @@ export interface DashboardCollection {
 }
 
 /**
- * Fetch the most recently updated collections for the dashboard grid, each with
- * its item count and the item types it holds ordered most-used first (so the
- * card can tint itself by its primary type and show a badge per type present).
+ * Fetch the given user's most recently updated collections for the dashboard
+ * grid, each with its item count and the item types it holds ordered most-used
+ * first (so the card can tint itself by its primary type and show a badge per
+ * type present).
  */
 export async function getRecentCollections(
+  userId: string,
   limit = 6
 ): Promise<DashboardCollection[]> {
   const collections = await prisma.collection.findMany({
+    where: { userId },
     orderBy: { updatedAt: "desc" },
     take: limit,
     select: { id: true, name: true, description: true, isFavorite: true },
@@ -113,14 +119,14 @@ export async function getRecentCollections(
   });
 }
 
-/** Totals for the dashboard stats tiles. */
-export async function getCollectionStats(): Promise<{
+/** Totals for the dashboard stats tiles, scoped to the given user. */
+export async function getCollectionStats(userId: string): Promise<{
   total: number;
   favorites: number;
 }> {
   const [total, favorites] = await Promise.all([
-    prisma.collection.count(),
-    prisma.collection.count({ where: { isFavorite: true } }),
+    prisma.collection.count({ where: { userId } }),
+    prisma.collection.count({ where: { userId, isFavorite: true } }),
   ]);
   return { total, favorites };
 }
@@ -135,14 +141,16 @@ export interface SidebarCollection {
 }
 
 /**
- * Collections for the sidebar list: favorites first, then most recently
- * updated, capped. Each carries the color of its most-used item type so a
- * non-favorite can render a colored circle.
+ * The given user's collections for the sidebar list: favorites first, then most
+ * recently updated, capped. Each carries the color of its most-used item type so
+ * a non-favorite can render a colored circle.
  */
 export async function getSidebarCollections(
+  userId: string,
   limit = 6
 ): Promise<SidebarCollection[]> {
   const collections = await prisma.collection.findMany({
+    where: { userId },
     orderBy: [{ isFavorite: "desc" }, { updatedAt: "desc" }],
     take: limit,
     select: { id: true, name: true, isFavorite: true },

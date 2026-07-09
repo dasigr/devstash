@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { connection } from "next/server";
 
 import { Sidebar } from "@/components/dashboard/Sidebar";
@@ -11,7 +11,11 @@ import { ImageCardButton } from "@/components/dashboard/ImageCardButton";
 import { FileListRow } from "@/components/dashboard/FileListRow";
 import { ItemDrawerProvider } from "@/components/dashboard/ItemDrawer";
 import { ItemTypeIcon } from "@/components/dashboard/ItemTypeIcon";
-import { getItemsByType, getSidebarItemTypes } from "@/lib/db/items";
+import {
+  getItemsByType,
+  getSidebarItemTypes,
+  getSystemItemType,
+} from "@/lib/db/items";
 import { getSidebarCollections } from "@/lib/db/collections";
 import { getCurrentUser } from "@/lib/db/user";
 
@@ -21,8 +25,9 @@ export async function generateMetadata({
   params: Promise<{ type: string }>;
 }): Promise<Metadata> {
   const { type } = await params;
-  const listing = await getItemsByType(type);
-  return { title: listing ? listing.type.name : "Items" };
+  // Only the label is needed here — no item query, so no owner scoping.
+  const itemType = await getSystemItemType(type);
+  return { title: itemType ? itemType.name : "Items" };
 }
 
 export default async function ItemsByTypePage({
@@ -35,28 +40,26 @@ export default async function ItemsByTypePage({
 
   const { type } = await params;
 
-  const [listing, sidebarItemTypes, sidebarCollections, currentUser] =
-    await Promise.all([
-      getItemsByType(type),
-      getSidebarItemTypes(),
-      getSidebarCollections(),
-      getCurrentUser(),
-    ]);
+  // Every query below is scoped to this user, so resolve them first. The proxy
+  // guarantees a session on /items/*; redirect defensively rather than render an
+  // unscoped page.
+  const currentUser = await getCurrentUser();
+  if (!currentUser) redirect("/sign-in");
 
-  // Unknown type slug — render a 404.
+  const [listing, sidebarItemTypes, sidebarCollections] = await Promise.all([
+    getItemsByType(type, currentUser.id),
+    getSidebarItemTypes(currentUser.id),
+    getSidebarCollections(currentUser.id),
+  ]);
+
+  // Unknown type slug — render a 404. (A known type the user has no items for
+  // renders the empty state below, not a 404.)
   if (!listing) notFound();
 
   // The images type renders a thumbnail gallery, and the files type a
   // single-column list; every other type uses the standard item-card grid.
   const isImageGallery = listing.type.slug === "images";
   const isFileList = listing.type.slug === "files";
-
-  const sidebarUser = currentUser ?? {
-    name: null,
-    email: null,
-    image: null,
-    isPro: false,
-  };
 
   return (
     <SidebarProvider>
@@ -65,7 +68,7 @@ export default async function ItemsByTypePage({
         <Sidebar
           itemTypes={sidebarItemTypes}
           collections={sidebarCollections}
-          user={sidebarUser}
+          user={currentUser}
         />
 
         {/* Main column: top bar + content */}
