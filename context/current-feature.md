@@ -1,14 +1,24 @@
 # Current Feature
 
+## Quick Copy on Item Cards
+
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+- Add a copy icon to each `ItemCard` so users can grab an item's content without opening the drawer.
+- Copies the same value the drawer's Copy button does (content for text types, url for links, filename for files).
+- Clicking copy must **not** open the item drawer.
+- Icon swaps to a check for ~2s after a successful copy, matching `CodeEditor` / `ItemDrawerDetail`.
+- Hidden when the item has nothing to copy (empty preview).
 
 ## Notes
+
+- `ItemCardButton` currently wraps the card in a real `<button>`; a nested copy `<button>` would be invalid HTML. Switch it to the `role="button"` + `onKeyDown` pattern already used by `FileListRow` (which nests a download `<a>` for the same reason).
+- `DashboardItem.preview` already carries the right value per content type (`itemPreview` in `src/lib/db/items.ts`), so no query or schema change is needed.
+- Components are out of Vitest scope, so no new unit tests — verify in the browser.
 
 <!-- Additional context, constraints, or details from spec -->
 
