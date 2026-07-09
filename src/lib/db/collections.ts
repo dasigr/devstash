@@ -1,5 +1,9 @@
+import { cache } from "react";
+
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
+import { itemSelect, toDashboardItem } from "@/lib/db/items";
+import type { DashboardItem } from "@/lib/db/items";
 import type { CreateCollectionInput } from "@/lib/validations/collections";
 
 /** Minimal item-type shape a collection card needs to render a badge. */
@@ -78,19 +82,22 @@ export interface DashboardCollection {
 }
 
 /**
- * Fetch the given user's most recently updated collections for the dashboard
- * grid, each with its item count and the item types it holds ordered most-used
+ * Fetch the given user's collections as cards, ordered and capped by the caller.
+ * Each carries its item count and the item types it holds ordered most-used
  * first (so the card can tint itself by its primary type and show a badge per
  * type present).
  */
-export async function getRecentCollections(
+async function listCollections(
   userId: string,
-  limit = 6
+  options: {
+    orderBy: Prisma.CollectionOrderByWithRelationInput[];
+    take?: number;
+  }
 ): Promise<DashboardCollection[]> {
   const collections = await prisma.collection.findMany({
     where: { userId },
-    orderBy: { updatedAt: "desc" },
-    take: limit,
+    orderBy: options.orderBy,
+    take: options.take,
     select: { id: true, name: true, description: true, isFavorite: true },
   });
 
@@ -117,6 +124,31 @@ export async function getRecentCollections(
       itemCount: rows.reduce((sum, row) => sum + row.count, 0),
       itemTypes,
     };
+  });
+}
+
+/**
+ * The given user's most recently updated collections, for the dashboard grid.
+ */
+export async function getRecentCollections(
+  userId: string,
+  limit = 6
+): Promise<DashboardCollection[]> {
+  return listCollections(userId, {
+    orderBy: [{ updatedAt: "desc" }],
+    take: limit,
+  });
+}
+
+/**
+ * All of the given user's collections, for the /collections page: favorites
+ * first, then most recently updated — matching the sidebar's ordering.
+ */
+export async function getAllCollections(
+  userId: string
+): Promise<DashboardCollection[]> {
+  return listCollections(userId, {
+    orderBy: [{ isFavorite: "desc" }, { updatedAt: "desc" }],
   });
 }
 
@@ -174,6 +206,58 @@ export async function getSidebarCollections(
     };
   });
 }
+
+/** A single collection with its items, for the collection detail page. */
+export interface CollectionDetail {
+  id: string;
+  name: string;
+  description: string | null;
+  isFavorite: boolean;
+  /** The collection's items, most recently updated first. */
+  items: DashboardItem[];
+}
+
+/**
+ * Fetch one of the given user's collections with its items, for
+ * `/collections/[id]`.
+ *
+ * Owner-scoped by `findFirst({ where: { id, userId } })`: a collection id that
+ * doesn't exist and one belonging to another user both return `null`, so the
+ * page 404s either way and never reveals which. Items are selected through the
+ * shared `itemSelect` + `toDashboardItem` so the cards render exactly as they do
+ * on the dashboard. The items come back already scoped, since a collection's
+ * items belong to the collection's owner.
+ *
+ * Wrapped in `cache()` so `generateMetadata` and the page body share one query
+ * per request instead of each running it.
+ */
+export const getCollectionDetail = cache(
+  async (id: string, userId: string): Promise<CollectionDetail | null> => {
+    const collection = await prisma.collection.findFirst({
+      where: { id, userId },
+      select: {
+        id: true,
+        name: true,
+        description: true,
+        isFavorite: true,
+        items: {
+          orderBy: { item: { updatedAt: "desc" } },
+          select: { item: { select: itemSelect } },
+        },
+      },
+    });
+
+    if (!collection) return null;
+
+    return {
+      id: collection.id,
+      name: collection.name,
+      description: collection.description,
+      isFavorite: collection.isFavorite,
+      items: collection.items.map((link) => toDashboardItem(link.item)),
+    };
+  }
+);
 
 /** A collection as an option in the item forms' collection picker. */
 export interface CollectionOption {

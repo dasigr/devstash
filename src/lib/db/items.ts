@@ -37,7 +37,7 @@ export interface DashboardItem {
 }
 
 /** Shape of the fields we select for each item, shared across the queries. */
-const itemSelect = {
+export const itemSelect = {
   id: true,
   title: true,
   contentType: true,
@@ -101,7 +101,7 @@ function relativeTime(date: Date): string {
 }
 
 /** Map a raw Prisma item into the display shape the cards consume. */
-function toDashboardItem(item: RawItem): DashboardItem {
+export function toDashboardItem(item: RawItem): DashboardItem {
   return {
     id: item.id,
     title: item.title,

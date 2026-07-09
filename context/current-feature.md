@@ -1,16 +1,41 @@
-# Current Feature
+# Current Feature: Collections Pages
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+- `/collections` lists all of the signed-in user's collections, rendered with the existing `CollectionCard`.
+- `/collections/[id]` shows a single collection's items, rendered with the existing item cards.
+- A collection the user doesn't own (or an unknown id) does not render — no existence leak.
+- The sidebar's "View all collections" row reaches `/collections`, and every collection card reaches its own detail page.
+- Both routes sit behind auth like `/dashboard`, `/profile`, and `/items`.
+- Empty states for a user with no collections, and for a collection with no items.
 
 ## Notes
 
-<!-- Additional context, constraints, or details from spec -->
+**The links already exist.** `CollectionCard` ([CollectionCard.tsx:22](src/components/dashboard/CollectionCard.tsx#L22)) already wraps the card in `<Link href={`/collections/${collection.id}`}>`, and the sidebar's "View all collections" `NavRow` ([Sidebar.tsx:169-176](src/components/dashboard/Sidebar.tsx#L169-L176)) already points at `/collections`. Both currently 404 because the routes don't exist. So the linking goal is satisfied by building the pages — verify, don't rewrite.
+
+**Data layer** (`src/lib/db/collections.ts`):
+
+- `/collections` needs an all-collections read. `getRecentCollections(userId, limit = 6)` is already exactly the right shape (`DashboardCollection` with `itemCount` + most-used-first `itemTypes`, backed by the single grouped `getTypeCountsByCollection` tally) — the only difference is the `take` and the ordering. Decide between passing a large/undefined limit vs. adding a sibling `getAllCollections(userId)`; prefer whichever avoids duplicating the tally logic.
+- `/collections/[id]` needs a new **owner-scoped** `getCollectionDetail(id, userId)` — `findFirst({ where: { id, userId } })`, returning `null` for a missing *or* foreign id so the page calls `notFound()` (same IDOR guard as `getItemDetail`). Its items should reuse the shared `itemSelect` + `toDashboardItem` mapper from `src/lib/db/items.ts` so cards get the same `preview` / relative-time / tags shape as everywhere else.
+
+**Pages** — server components mirroring the `/items/[type]` shell (`SidebarProvider` + `Sidebar` + `TopBar` + `ItemDrawerProvider`, sidebar data fetched in the same `Promise.all`, `await connection()`, resolve `getCurrentUser()` first and `redirect("/sign-in")` when absent — no guest fallback).
+
+**Cards** — reuse as-is, don't build new ones:
+
+- `/collections` → `CollectionCard` in the dashboard's responsive grid.
+- `/collections/[id]` → `ItemCardButton` (wraps `ItemCard`, opens the existing item drawer via `openItem(id)` with no navigation). A collection holds **mixed types**, so unlike `/items/[type]` there's no images-gallery / files-list branch — one `ItemCard` grid for everything.
+
+**Route protection** — add `/collections/:path*` to the `matcher` in [src/proxy.ts:31](src/proxy.ts#L31).
+
+**Testing** — Vitest covers `src/lib/db/*`, not pages. New/changed queries need cases pinning the owner-scoped `where` clause (null on foreign id, item shape, empty collection) in `src/lib/db/collections.test.ts`.
+
+**Verification selector note** — from prior features: assert drawers/modals with `[data-slot=sheet-content]` / `[data-slot=dialog-content]`, never `[role=dialog]` (the always-present mobile sidebar `<aside>` matches it and yields false positives).
+
+**Out of scope** — collection edit / delete / favorite toggle, `defaultTypeId` selection, removing an item from a collection outside the item edit form, pagination.
 
 ## History
 
