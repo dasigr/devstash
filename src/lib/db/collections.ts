@@ -4,7 +4,10 @@ import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { itemSelect, toDashboardItem } from "@/lib/db/items";
 import type { DashboardItem } from "@/lib/db/items";
-import type { CreateCollectionInput } from "@/lib/validations/collections";
+import type {
+  CreateCollectionInput,
+  UpdateCollectionInput,
+} from "@/lib/validations/collections";
 
 /** Minimal item-type shape a collection card needs to render a badge. */
 export interface CollectionTypeSummary {
@@ -105,26 +108,38 @@ async function listCollections(
     collections.map((c) => c.id)
   );
 
-  return collections.map((collection) => {
-    // Grouped rows come most-used first; the card tints by the primary type
-    // (first entry) and shows a badge per type present.
-    const rows = typeCounts.get(collection.id) ?? [];
-    const itemTypes: CollectionTypeSummary[] = rows.map((row) => ({
-      id: row.typeId,
-      name: row.typeName,
-      color: row.typeColor,
-      icon: row.typeIcon,
-    }));
+  return collections.map((collection) =>
+    toDashboardCollection(collection, typeCounts.get(collection.id) ?? []),
+  );
+}
 
-    return {
-      id: collection.id,
-      name: collection.name,
-      description: collection.description,
-      isFavorite: collection.isFavorite,
-      itemCount: rows.reduce((sum, row) => sum + row.count, 0),
-      itemTypes,
-    };
-  });
+/** The scalar columns every `DashboardCollection` is built from. */
+type CollectionRow = Pick<
+  DashboardCollection,
+  "id" | "name" | "description" | "isFavorite"
+>;
+
+/**
+ * Build a card-shaped collection from its scalar row and its type tally. The
+ * tally rows arrive most-used first, so the card tints by the primary type
+ * (first entry) and shows a badge per type present.
+ */
+function toDashboardCollection(
+  collection: CollectionRow,
+  rows: TypeCountRow[],
+): DashboardCollection {
+  const itemTypes: CollectionTypeSummary[] = rows.map((row) => ({
+    id: row.typeId,
+    name: row.typeName,
+    color: row.typeColor,
+    icon: row.typeIcon,
+  }));
+
+  return {
+    ...collection,
+    itemCount: rows.reduce((sum, row) => sum + row.count, 0),
+    itemTypes,
+  };
 }
 
 /**
@@ -298,4 +313,54 @@ export async function createCollection(
   });
 
   return { ...created, itemCount: 0, itemTypes: [] };
+}
+
+/**
+ * Update one of the given user's collections. Owner-scoped by `updateMany`'s
+ * `where: { id, userId }` — atomic, and it can't be made to write another user's
+ * row the way `collection.update` (which keys off the unique id alone) could.
+ * Returns null when the id is unknown or belongs to someone else, so the caller
+ * can 404 without revealing which.
+ *
+ * `description` is replaced, not merged: a blanked-out field clears it.
+ */
+export async function updateCollection(
+  id: string,
+  userId: string,
+  data: UpdateCollectionInput,
+): Promise<DashboardCollection | null> {
+  const { count } = await prisma.collection.updateMany({
+    where: { id, userId },
+    data: { name: data.name, description: data.description ?? null },
+  });
+  if (count === 0) return null;
+
+  const [updated, typeCounts] = await Promise.all([
+    prisma.collection.findUniqueOrThrow({
+      where: { id },
+      select: { id: true, name: true, description: true, isFavorite: true },
+    }),
+    getTypeCountsByCollection([id]),
+  ]);
+
+  return toDashboardCollection(updated, typeCounts.get(id) ?? []);
+}
+
+/**
+ * Delete one of the given user's collections. A single atomic `deleteMany`
+ * scoped by `{ id, userId }` (no TOCTOU window, still guards IDOR); returns
+ * false when nothing matched.
+ *
+ * The collection's items are NOT deleted. `ItemCollection` cascades on the
+ * collection side, so only the membership rows go away — every item survives and
+ * simply stops belonging to this collection.
+ */
+export async function deleteCollection(
+  id: string,
+  userId: string,
+): Promise<boolean> {
+  const { count } = await prisma.collection.deleteMany({
+    where: { id, userId },
+  });
+  return count > 0;
 }

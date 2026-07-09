@@ -9,6 +9,7 @@ import { TopBar } from "@/components/dashboard/TopBar";
 import { SectionHeader } from "@/components/dashboard/SectionHeader";
 import { ItemCardButton } from "@/components/dashboard/ItemCardButton";
 import { ItemDrawerProvider } from "@/components/dashboard/ItemDrawer";
+import { CollectionDetailActions } from "@/components/dashboard/CollectionDetailActions";
 import { getCollectionDetail, getSidebarCollections } from "@/lib/db/collections";
 import { getSidebarItemTypes } from "@/lib/db/items";
 import { getCurrentUser } from "@/lib/db/user";
@@ -72,22 +73,31 @@ export default async function CollectionDetailPage({
           <div className="flex min-w-0 flex-1 flex-col">
             <TopBar />
             <main className="flex-1 space-y-8 overflow-y-auto p-6">
-              <div>
-                <h1 className="flex items-center gap-2 text-2xl font-semibold text-foreground">
-                  <FolderOpen
-                    className="size-6"
-                    style={primaryColor ? { color: primaryColor } : undefined}
-                  />
-                  {collection.name}
-                  {collection.isFavorite && (
-                    <Star className="size-5 shrink-0 fill-amber-400 text-amber-400" />
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <h1 className="flex items-center gap-2 text-2xl font-semibold text-foreground">
+                    <FolderOpen
+                      className="size-6 shrink-0"
+                      style={primaryColor ? { color: primaryColor } : undefined}
+                    />
+                    {collection.name}
+                    {collection.isFavorite && (
+                      <Star className="size-5 shrink-0 fill-amber-400 text-amber-400" />
+                    )}
+                  </h1>
+                  {collection.description && (
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {collection.description}
+                    </p>
                   )}
-                </h1>
-                {collection.description && (
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {collection.description}
-                  </p>
-                )}
+                </div>
+                <CollectionDetailActions
+                  collection={{
+                    id: collection.id,
+                    name: collection.name,
+                    description: collection.description,
+                  }}
+                />
               </div>
 
               <section>
