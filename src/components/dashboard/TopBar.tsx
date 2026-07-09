@@ -1,27 +1,22 @@
-import { Search } from "lucide-react";
-
-import { Input } from "@/components/ui/input";
 import { SidebarToggle } from "@/components/dashboard/SidebarToggle";
+import { SearchPalette } from "@/components/dashboard/SearchPalette";
 import { CreateItemDialog } from "@/components/dashboard/CreateItemDialog";
 import { CreateCollectionDialog } from "@/components/dashboard/CreateCollectionDialog";
 
 /**
  * Dashboard top bar: sidebar toggle, search field, and
  * "New Collection" / "New Item" actions — each opens its own create modal.
+ *
+ * The search field is the command palette's trigger, so every page rendering a
+ * TopBar must sit inside an <ItemDrawerProvider> (the palette opens items).
  */
 export function TopBar() {
   return (
     <header className="flex h-16 shrink-0 items-center gap-4 border-b border-border px-6">
       <SidebarToggle />
 
-      <div className="relative w-full max-w-md">
-        <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          type="search"
-          placeholder="Search items, tags, collections…"
-          className="pl-9"
-          aria-label="Search"
-        />
+      <div className="w-full max-w-md">
+        <SearchPalette />
       </div>
 
       <div className="ml-auto flex shrink-0 items-center gap-2">

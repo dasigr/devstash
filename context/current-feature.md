@@ -1,16 +1,28 @@
-# Current Feature
+# Current Feature: Global Search / Command Palette
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+- A global command palette opens with `Cmd+K` (Mac) / `Ctrl+K` (Windows).
+- Clicking the TopBar search input opens the palette; its placeholder shows a `⌘K` hint.
+- Fuzzy search runs client-side across all of the signed-in user's items and collections — no server round-trip per keystroke.
+- Results are grouped into an **Items** section and a **Collections** section.
+- Keyboard navigation works: arrow keys move the selection, `Enter` selects.
+- Each item result shows its item-type icon; each collection result shows its item count.
+- Selecting an item opens the existing item drawer; selecting a collection navigates to `/collections/[id]`.
 
 ## Notes
 
-<!-- Additional context, constraints, or details from spec -->
+- Use the shadcn `Command` component (`cmdk`).
+- Pre-fetch the searchable dataset once on app load rather than querying per keystroke.
+- Search payload shape: items → `id`, `title`, `type`, content preview; collections → `id`, `name`, `itemCount`.
+- Reuse the existing data-fetching functions in `src/lib/db/*` rather than writing new queries where possible.
+- All reads must stay **owner-scoped** (`userId` in the `where`) — see the "Owner-Scoped Items & Collections (fix)" history entry.
+- Item selection must call the existing `openItem(id)` from `item-drawer-context.tsx`; do not build a second drawer.
+- Modal/drawer assertions in browser verification must use `[data-slot=...]` selectors, never `[role=dialog]` (the mobile sidebar `<aside>` matches it).
 
 ## History
 
