@@ -15,6 +15,11 @@ const optionalText = z.preprocess(
   z.string().trim().min(1).nullable().optional(),
 );
 
+/** Trim, drop empties, and de-duplicate a list of names / ids. */
+const cleanList = (arr: string[]) => [
+  ...new Set(arr.map((v) => v.trim()).filter((v) => v.length > 0)),
+];
+
 /** The text/url system types a user can create by typing content directly. */
 export const CREATABLE_ITEM_TYPES = [
   "snippet",
@@ -58,12 +63,10 @@ export const createItemSchema = z
     ),
     fileName: optionalText,
     fileSize: z.number().int().positive().nullable().optional(),
-    tags: z
-      .array(z.string())
-      .default([])
-      .transform((arr) => [
-        ...new Set(arr.map((t) => t.trim()).filter((t) => t.length > 0)),
-      ]),
+    tags: z.array(z.string()).default([]).transform(cleanList),
+    // Collections to file the new item under. Ids are filtered to the caller's
+    // own collections before the join rows are written.
+    collectionIds: z.array(z.string()).default([]).transform(cleanList),
   })
   // Link items must carry a URL; the base rule only checks it's a valid URL.
   .refine((data) => data.type !== "link" || !!data.url, {
@@ -110,12 +113,10 @@ export const updateItemSchema = z.object({
     z.string().trim().url("Enter a valid URL").nullable().optional(),
   ),
   // Trim, drop empties, and de-duplicate so tags land as clean, unique names.
-  tags: z
-    .array(z.string())
-    .default([])
-    .transform((arr) => [
-      ...new Set(arr.map((t) => t.trim()).filter((t) => t.length > 0)),
-    ]),
+  tags: z.array(z.string()).default([]).transform(cleanList),
+  // The collections the item should belong to after the save — membership is
+  // replaced, not merged. Omitting the field leaves membership untouched.
+  collectionIds: z.array(z.string()).transform(cleanList).optional(),
 });
 
 export type UpdateItemInput = z.infer<typeof updateItemSchema>;

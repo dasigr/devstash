@@ -15,6 +15,7 @@ import { SheetTitle } from "@/components/ui/sheet";
 import { ItemTypeBadge } from "@/components/dashboard/ItemTypeBadge";
 import { CodeEditor } from "@/components/dashboard/CodeEditor";
 import { MarkdownEditor } from "@/components/dashboard/MarkdownEditor";
+import { CollectionPicker } from "@/components/dashboard/CollectionPicker";
 
 /** Capitalized singular type name for the header, e.g. "snippet" -> "Snippet". */
 function typeHeading(name: string): string {
@@ -56,6 +57,9 @@ export function ItemDrawerEdit({
   const [language, setLanguage] = useState(item.language ?? "");
   const [url, setUrl] = useState(item.url ?? "");
   const [tags, setTags] = useState(item.tags.join(", "));
+  const [collectionIds, setCollectionIds] = useState<string[]>(
+    item.collections.map((collection) => collection.id),
+  );
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -80,6 +84,7 @@ export function ItemDrawerEdit({
         .split(",")
         .map((t) => t.trim())
         .filter((t) => t.length > 0),
+      collectionIds,
     };
     if (showContent) payload.content = content === "" ? null : content;
     if (showLanguage) payload.language = blankToNull(language);
@@ -256,6 +261,13 @@ export function ItemDrawerEdit({
           />
           <p className="text-xs text-muted-foreground">Separate tags with commas.</p>
         </div>
+
+        <CollectionPicker
+          idPrefix="item-collection"
+          value={collectionIds}
+          onChange={setCollectionIds}
+          disabled={pending}
+        />
 
         {error && (
           <p role="alert" className="text-sm text-destructive">

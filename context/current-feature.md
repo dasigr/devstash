@@ -1,16 +1,29 @@
-# Current Feature
+# Current Feature: Add Items to Collections
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+- A collection picker in the **New Item** dialog (`CreateItemDialog`) that lets the user select **zero, one, or many** of their existing collections; the created item is linked to each selected collection.
+- The same picker in the drawer's **edit mode** (`ItemDrawerEdit`), pre-checked with the collections the item already belongs to; saving **replaces** the item's collection membership with the selection (add + remove in one save).
+- All three data layers extended, matching the existing item stack:
+  - `createItemSchema` / `updateItemSchema` gain an optional `collectionIds: string[]` (de-duplicated, like `tags`).
+  - `createItem` / `updateItem` in `src/lib/db/items.ts` write the `ItemCollection` join rows.
+  - The `createItem` / `updateItem` server actions in `src/actions/items.ts` pass the parsed value through unchanged.
+- The drawer's existing **"In collections"** list reflects the change after save (it already comes from `getItemDetail`, so a re-render from the returned `ItemDetail` should be enough — no extra fetch).
+- Vitest coverage for the new validation rules and the DB write paths (`src/lib/validations/items.test.ts`, `src/lib/db/items.test.ts`, `src/actions/items.test.ts`).
 
 ## Notes
 
-<!-- Additional context, constraints, or details from spec -->
+- **Security — both sides of the link must be owner-scoped on write.** This is the exact caveat flagged in the "Owner-Scoped Items & Collections (fix)" history entry. When linking, filter the incoming `collectionIds` to collections where `userId === session user` (a `findMany({ where: { id: { in: ids }, userId }, select: { id: true } })`) and only connect the survivors. Never trust the client-supplied ids. Silently drop foreign ids rather than erroring (no existence leak).
+- **Membership replace, not merge**, on update — mirrors how `updateItem` already handles `tags` (`set: []` + reconnect). Only touch the join rows when `collectionIds` is *defined*; an undefined field leaves membership as-is (consistent with the rest of `updateItem`).
+- **Where does the picker get the collection list?** The create dialog is mounted in `TopBar`, the edit form inside the client `ItemDrawer` — neither is a server component. Options: (a) a new `GET /api/collections` route (matches the drawer's existing `GET /api/items/[id]` client-fetch precedent), or (b) fetch in the server pages and thread a `collections` prop down. Decide at `start`; (a) is likely cleaner since the edit form is deep inside a client provider. Whatever route is added must be session-guarded and owner-scoped, and — like `/api/items/[id]` — **not** added to the proxy matcher so it returns JSON 401 instead of an HTML redirect.
+- Reuse the existing Base UI wrappers (`dialog.tsx`, etc.). If a multi-select / checkbox list needs a new primitive, wrap Base UI — do **not** pull in Radix.
+- **Out of scope:** collection detail pages / listing a collection's items, removing an item from a collection outside the edit form, collection edit/delete/favorite, `defaultTypeId` selection.
+- No schema change expected — `ItemCollection` (`itemId`, `collectionId`, `addedAt`) already exists with cascade deletes on both sides.
+- File/image item types: edit mode currently degrades to Title/Description/Tags only. The collection picker should be available for **all** types (it isn't content-shape dependent).
 
 ## History
 

@@ -26,6 +26,7 @@ import { ItemTypeIcon } from "@/components/dashboard/ItemTypeIcon";
 import { CodeEditor } from "@/components/dashboard/CodeEditor";
 import { MarkdownEditor } from "@/components/dashboard/MarkdownEditor";
 import { FileUpload, type UploadedFile } from "@/components/dashboard/FileUpload";
+import { CollectionPicker } from "@/components/dashboard/CollectionPicker";
 
 /** The selectable creatable types, with their display label / icon / color. */
 const TYPES: {
@@ -78,6 +79,7 @@ export function CreateItemDialog() {
   const [file, setFile] = useState<UploadedFile | null>(null);
   const [uploading, setUploading] = useState(false);
   const [tags, setTags] = useState("");
+  const [collectionIds, setCollectionIds] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -104,6 +106,7 @@ export function CreateItemDialog() {
     setFile(null);
     setUploading(false);
     setTags("");
+    setCollectionIds([]);
     setError(null);
   }
 
@@ -143,6 +146,7 @@ export function CreateItemDialog() {
         .split(",")
         .map((t) => t.trim())
         .filter((t) => t.length > 0),
+      collectionIds,
     };
     if (showContent) payload.content = content === "" ? null : content;
     if (showLanguage) payload.language = blankToNull(language);
@@ -371,6 +375,13 @@ export function CreateItemDialog() {
               Separate tags with commas.
             </p>
           </div>
+
+          <CollectionPicker
+            idPrefix="new-item-collection"
+            value={collectionIds}
+            onChange={setCollectionIds}
+            disabled={pending}
+          />
 
           {error && (
             <p role="alert" className="text-sm text-destructive">

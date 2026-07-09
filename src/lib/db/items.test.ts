@@ -11,6 +11,7 @@ const {
   count,
   typeFindFirst,
   typeFindMany,
+  collectionFindMany,
 } = vi.hoisted(() => ({
   findFirst: vi.fn(),
   update: vi.fn(),
@@ -20,11 +21,13 @@ const {
   count: vi.fn(),
   typeFindFirst: vi.fn(),
   typeFindMany: vi.fn(),
+  collectionFindMany: vi.fn(),
 }));
 vi.mock("@/lib/prisma", () => ({
   prisma: {
     item: { findFirst, update, deleteMany, create, findMany, count },
     itemType: { findFirst: typeFindFirst, findMany: typeFindMany },
+    collection: { findMany: collectionFindMany },
   },
 }));
 
@@ -151,6 +154,7 @@ describe("updateItem", () => {
   beforeEach(() => {
     findFirst.mockReset();
     update.mockReset();
+    collectionFindMany.mockReset();
   });
 
   const validData = {
@@ -234,6 +238,72 @@ describe("updateItem", () => {
 
     expect(result).toMatchObject({ id: "item_1", title: "useDebounce hook" });
   });
+
+  it("leaves collection membership untouched when collectionIds is omitted", async () => {
+    findFirst.mockResolvedValueOnce({ id: "item_1" });
+    update.mockResolvedValueOnce({});
+    findFirst.mockResolvedValueOnce(rawItem());
+
+    await updateItem("item_1", "user_1", validData);
+
+    expect("collections" in update.mock.calls[0][0].data).toBe(false);
+    expect(collectionFindMany).not.toHaveBeenCalled();
+  });
+
+  it("replaces membership, scoping the collection lookup to the owner", async () => {
+    findFirst.mockResolvedValueOnce({ id: "item_1" });
+    collectionFindMany.mockResolvedValueOnce([{ id: "col_a" }, { id: "col_b" }]);
+    update.mockResolvedValueOnce({});
+    findFirst.mockResolvedValueOnce(rawItem());
+
+    await updateItem("item_1", "user_1", {
+      ...validData,
+      collectionIds: ["col_a", "col_b"],
+    });
+
+    expect(collectionFindMany.mock.calls[0][0].where).toEqual({
+      id: { in: ["col_a", "col_b"] },
+      userId: "user_1",
+    });
+    expect(update.mock.calls[0][0].data.collections).toEqual({
+      deleteMany: {},
+      create: [
+        { collection: { connect: { id: "col_a" } } },
+        { collection: { connect: { id: "col_b" } } },
+      ],
+    });
+  });
+
+  it("drops collection ids the user doesn't own", async () => {
+    findFirst.mockResolvedValueOnce({ id: "item_1" });
+    // Only col_mine survives the owner-scoped lookup.
+    collectionFindMany.mockResolvedValueOnce([{ id: "col_mine" }]);
+    update.mockResolvedValueOnce({});
+    findFirst.mockResolvedValueOnce(rawItem());
+
+    await updateItem("item_1", "user_1", {
+      ...validData,
+      collectionIds: ["col_mine", "col_someone_elses"],
+    });
+
+    expect(update.mock.calls[0][0].data.collections.create).toEqual([
+      { collection: { connect: { id: "col_mine" } } },
+    ]);
+  });
+
+  it("clears membership when given an empty collectionIds, without a lookup", async () => {
+    findFirst.mockResolvedValueOnce({ id: "item_1" });
+    update.mockResolvedValueOnce({});
+    findFirst.mockResolvedValueOnce(rawItem());
+
+    await updateItem("item_1", "user_1", { ...validData, collectionIds: [] });
+
+    expect(collectionFindMany).not.toHaveBeenCalled();
+    expect(update.mock.calls[0][0].data.collections).toEqual({
+      deleteMany: {},
+      create: [],
+    });
+  });
 });
 
 describe("createItem", () => {
@@ -241,6 +311,7 @@ describe("createItem", () => {
     typeFindFirst.mockReset();
     create.mockReset();
     findFirst.mockReset();
+    collectionFindMany.mockReset();
   });
 
   const snippetData = {
@@ -251,6 +322,7 @@ describe("createItem", () => {
     language: "typescript",
     url: null,
     tags: ["react", "hooks"],
+    collectionIds: [],
   };
 
   it("returns null when the system type can't be resolved", async () => {
@@ -314,6 +386,7 @@ describe("createItem", () => {
       fileName: "report.pdf",
       fileSize: 12345,
       tags: [],
+      collectionIds: [],
     });
 
     const data = create.mock.calls[0][0].data;
@@ -336,6 +409,7 @@ describe("createItem", () => {
       language: null,
       url: "https://example.com",
       tags: [],
+      collectionIds: [],
     });
 
     const data = create.mock.calls[0][0].data;
@@ -356,6 +430,38 @@ describe("createItem", () => {
       id: "item_new",
       userId: "user_1",
     });
+  });
+
+  it("links only the collections the user owns", async () => {
+    typeFindFirst.mockResolvedValue({ id: "type_snippet" });
+    // col_theirs belongs to another user, so the lookup doesn't return it.
+    collectionFindMany.mockResolvedValue([{ id: "col_mine" }]);
+    create.mockResolvedValue({ id: "item_new" });
+    findFirst.mockResolvedValue(rawItem({ id: "item_new" }));
+
+    await createItem("user_1", {
+      ...snippetData,
+      collectionIds: ["col_mine", "col_theirs"],
+    });
+
+    expect(collectionFindMany.mock.calls[0][0].where).toEqual({
+      id: { in: ["col_mine", "col_theirs"] },
+      userId: "user_1",
+    });
+    expect(create.mock.calls[0][0].data.collections).toEqual({
+      create: [{ collection: { connect: { id: "col_mine" } } }],
+    });
+  });
+
+  it("creates no collection links (and runs no lookup) when none are chosen", async () => {
+    typeFindFirst.mockResolvedValue({ id: "type_snippet" });
+    create.mockResolvedValue({ id: "item_new" });
+    findFirst.mockResolvedValue(rawItem({ id: "item_new" }));
+
+    await createItem("user_1", snippetData);
+
+    expect(collectionFindMany).not.toHaveBeenCalled();
+    expect(create.mock.calls[0][0].data.collections).toEqual({ create: [] });
   });
 });
 
