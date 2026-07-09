@@ -117,19 +117,23 @@ function toDashboardItem(item: RawItem): DashboardItem {
   };
 }
 
-/** Pinned items, most recently updated first (empty when none are pinned). */
-export async function getPinnedItems(): Promise<DashboardItem[]> {
+/** The given user's pinned items, most recently updated first. */
+export async function getPinnedItems(userId: string): Promise<DashboardItem[]> {
   const items = await prisma.item.findMany({
-    where: { isPinned: true },
+    where: { userId, isPinned: true },
     orderBy: { updatedAt: "desc" },
     select: itemSelect,
   });
   return items.map(toDashboardItem);
 }
 
-/** The most recently updated items for the Recent Items grid. */
-export async function getRecentItems(limit = 10): Promise<DashboardItem[]> {
+/** The given user's most recently updated items, for the Recent Items grid. */
+export async function getRecentItems(
+  userId: string,
+  limit = 10,
+): Promise<DashboardItem[]> {
   const items = await prisma.item.findMany({
+    where: { userId },
     orderBy: { updatedAt: "desc" },
     take: limit,
     select: itemSelect,
@@ -137,14 +141,14 @@ export async function getRecentItems(limit = 10): Promise<DashboardItem[]> {
   return items.map(toDashboardItem);
 }
 
-/** Totals for the dashboard stats tiles. */
-export async function getItemStats(): Promise<{
+/** Totals for the dashboard stats tiles, scoped to the given user. */
+export async function getItemStats(userId: string): Promise<{
   total: number;
   favorites: number;
 }> {
   const [total, favorites] = await Promise.all([
-    prisma.item.count(),
-    prisma.item.count({ where: { isFavorite: true } }),
+    prisma.item.count({ where: { userId } }),
+    prisma.item.count({ where: { userId, isFavorite: true } }),
   ]);
   return { total, favorites };
 }
@@ -424,7 +428,7 @@ export interface SidebarItemType {
   icon: string;
   /** Pro-gated type (file / image), per the documented data model. */
   isPro: boolean;
-  /** Number of items of this type. */
+  /** Number of the user's items of this type. */
   count: number;
 }
 
@@ -454,11 +458,17 @@ const TYPE_ORDER = [
 ];
 
 /**
- * The system item types for the sidebar, each with a live item count, ordered
- * to match the documented item-types table. Names are stored singular/lowercase
- * (e.g. "snippet"); we pluralize for the label and the /items/<slug> route.
+ * The system item types for the sidebar, each with a live count of the given
+ * user's items of that type, ordered to match the documented item-types table.
+ * Names are stored singular/lowercase (e.g. "snippet"); we pluralize for the
+ * label and the /items/<slug> route.
+ *
+ * System types themselves are global (`isSystem: true`, no owner), so only the
+ * relation count is filtered by owner.
  */
-export async function getSidebarItemTypes(): Promise<SidebarItemType[]> {
+export async function getSidebarItemTypes(
+  userId: string,
+): Promise<SidebarItemType[]> {
   const types = await prisma.itemType.findMany({
     where: { isSystem: true },
     select: {
@@ -466,7 +476,7 @@ export async function getSidebarItemTypes(): Promise<SidebarItemType[]> {
       name: true,
       color: true,
       icon: true,
-      _count: { select: { items: true } },
+      _count: { select: { items: { where: { userId } } } },
     },
   });
 
@@ -499,15 +509,15 @@ export interface ItemTypeListing {
 }
 
 /**
- * Resolve a plural /items slug (e.g. "snippets") to its system item type and
- * that type's items, most recently updated first. Returns null when the slug
- * doesn't match a system type, so the page can render a 404.
+ * Resolve a plural /items slug (e.g. "snippets") to its system item type.
+ * Returns null when the slug doesn't match one, so the page can render a 404.
  *
- * Wrapped in React `cache()` so a single request (generateMetadata + the page)
- * shares one lookup instead of querying twice.
+ * System types are global, so this needs no owner scoping. It's wrapped in React
+ * `cache()` so `generateMetadata` (which only needs the label) and the page share
+ * one lookup, and so the page doesn't run the item query twice per request.
  */
-export const getItemsByType = cache(
-  async (slug: string): Promise<ItemTypeListing | null> => {
+export const getSystemItemType = cache(
+  async (slug: string): Promise<ItemTypeListing["type"] | null> => {
     // Slugs are the plural of the singular stored name (snippet -> snippets).
     const singular = slug.endsWith("s") ? slug.slice(0, -1) : slug;
 
@@ -517,22 +527,35 @@ export const getItemsByType = cache(
     });
     if (!type) return null;
 
+    return {
+      id: type.id,
+      name: typeLabel(type.name),
+      slug: typeSlug(type.name),
+      color: type.color,
+      icon: type.icon,
+      isPro: PRO_TYPE_NAMES.has(type.name),
+    };
+  }
+);
+
+/**
+ * Resolve a plural /items slug to its system item type and **the given user's**
+ * items of that type, most recently updated first. Returns null when the slug
+ * doesn't match a system type, so the page can render a 404. A valid slug the
+ * user has no items for returns an empty `items` array (an empty state, not a
+ * 404).
+ */
+export const getItemsByType = cache(
+  async (slug: string, userId: string): Promise<ItemTypeListing | null> => {
+    const type = await getSystemItemType(slug);
+    if (!type) return null;
+
     const items = await prisma.item.findMany({
-      where: { itemTypeId: type.id },
+      where: { userId, itemTypeId: type.id },
       orderBy: { updatedAt: "desc" },
       select: itemSelect,
     });
 
-    return {
-      type: {
-        id: type.id,
-        name: typeLabel(type.name),
-        slug: typeSlug(type.name),
-        color: type.color,
-        icon: type.icon,
-        isPro: PRO_TYPE_NAMES.has(type.name),
-      },
-      items: items.map(toDashboardItem),
-    };
+    return { type, items: items.map(toDashboardItem) };
   }
 );

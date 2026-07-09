@@ -2,13 +2,39 @@
 
 ## Status
 
-Not Started
+Completed — pending commit
+
+## Fix: Owner-Scoped Items & Collections
+
+Users must only ever see the items and collections they own. Today the read
+queries behind the dashboard, the sidebar, and `/items/[type]` are **not**
+filtered by `userId`, so every signed-in user sees every other user's data. The
+write/detail paths (`getItemDetail`, `updateItem`, `deleteItem`, `getItemFile`)
+are already owner-scoped; this fix brings the read paths in line.
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+- Every item/collection read query takes a `userId` and filters on it, matching
+  the existing `getItemDetail(id, userId)` / `getProfileStats(userId)` convention.
+- Unscoped functions fixed in `src/lib/db/items.ts`: `getPinnedItems`,
+  `getRecentItems`, `getItemStats`, `getSidebarItemTypes`, `getItemsByType`.
+- Unscoped functions fixed in `src/lib/db/collections.ts`: `getRecentCollections`,
+  `getCollectionStats`, `getSidebarCollections`.
+- Sidebar per-type counts reflect only the user's items (filtered relation count).
+- Pages resolve the session user *before* fetching, and redirect to `/sign-in`
+  when there's no session (the proxy already guards these routes; this removes
+  the need for a "guest" fallback that could render another user's data).
+- Vitest coverage asserting each query passes `userId` into its `where` clause.
 
 ## Notes
+
+- System `ItemType` rows are global (`isSystem: true`, `userId: null`), so type
+  *resolution* stays unscoped — only the item counts and item lists are scoped.
+- `/items/[type]`: a valid slug with zero items of the user's must render the
+  empty state, not a 404. Type resolution is split into a cached
+  `getSystemItemType(slug)` so `generateMetadata` doesn't re-run the item query.
+- `getTypeCountsByCollection` needs no owner filter of its own — it's only ever
+  called with collection ids already filtered to the owner.
 
 <!-- Additional context, constraints, or details from spec -->
 
