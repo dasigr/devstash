@@ -7,6 +7,7 @@ import { SidebarProvider } from "@/components/dashboard/sidebar-context";
 import { TopBar } from "@/components/dashboard/TopBar";
 import { SectionHeader } from "@/components/dashboard/SectionHeader";
 import { ItemCardButton } from "@/components/dashboard/ItemCardButton";
+import { ImageCardButton } from "@/components/dashboard/ImageCardButton";
 import { ItemDrawerProvider } from "@/components/dashboard/ItemDrawer";
 import { ItemTypeIcon } from "@/components/dashboard/ItemTypeIcon";
 import { getItemsByType, getSidebarItemTypes } from "@/lib/db/items";
@@ -43,6 +44,9 @@ export default async function ItemsByTypePage({
 
   // Unknown type slug — render a 404.
   if (!listing) notFound();
+
+  // The images type renders a thumbnail gallery instead of standard item cards.
+  const isImageGallery = listing.type.slug === "images";
 
   const sidebarUser = currentUser ?? {
     name: null,
@@ -87,11 +91,19 @@ export default async function ItemsByTypePage({
                 count={listing.items.length}
               />
               {listing.items.length > 0 ? (
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                  {listing.items.map((item) => (
-                    <ItemCardButton key={item.id} item={item} />
-                  ))}
-                </div>
+                isImageGallery ? (
+                  <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+                    {listing.items.map((item) => (
+                      <ImageCardButton key={item.id} item={item} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                    {listing.items.map((item) => (
+                      <ItemCardButton key={item.id} item={item} />
+                    ))}
+                  </div>
+                )
               ) : (
                 <p className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
                   No {listing.type.name.toLowerCase()} yet.
