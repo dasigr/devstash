@@ -175,6 +175,26 @@ export async function getSidebarCollections(
   });
 }
 
+/** A collection as an option in the item forms' collection picker. */
+export interface CollectionOption {
+  id: string;
+  name: string;
+}
+
+/**
+ * The given user's collections as picker options, alphabetical. Used by the
+ * new/edit item forms to choose which collections an item belongs to.
+ */
+export async function getCollectionOptions(
+  userId: string,
+): Promise<CollectionOption[]> {
+  return prisma.collection.findMany({
+    where: { userId },
+    orderBy: { name: "asc" },
+    select: { id: true, name: true },
+  });
+}
+
 /**
  * Create a collection owned by the given user. The owner comes from the caller's
  * session, never from the payload. A brand-new collection holds no items, so its

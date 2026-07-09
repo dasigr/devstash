@@ -274,9 +274,33 @@ const CONTENT_TYPE_BY_TYPE: Record<CreateItemInput["type"], ContentType> = {
 };
 
 /**
+ * Narrow client-supplied collection ids to the ones the user actually owns.
+ * Both sides of an ItemCollection row must be owner-scoped on write, so a
+ * foreign id can never be linked to. Unknown/foreign ids are dropped silently
+ * rather than erroring, so this never leaks which collection ids exist.
+ */
+async function ownedCollectionIds(
+  userId: string,
+  ids: string[],
+): Promise<string[]> {
+  if (ids.length === 0) return [];
+  const owned = await prisma.collection.findMany({
+    where: { id: { in: ids }, userId },
+    select: { id: true },
+  });
+  return owned.map((collection) => collection.id);
+}
+
+/** Nested-create payload for the item's ItemCollection join rows. */
+function collectionLinks(collectionIds: string[]) {
+  return collectionIds.map((id) => ({ collection: { connect: { id } } }));
+}
+
+/**
  * Create a new item owned by the given user and return its ItemDetail. Resolves
  * the chosen creatable type to its system ItemType, derives the storage
- * contentType from it, and connects tags (creating any that don't exist).
+ * contentType from it, connects tags (creating any that don't exist), and files
+ * the item under the given collections — filtered to the ones the user owns.
  * Returns null when the system type can't be found (shouldn't happen once the
  * types are seeded), so the caller can surface a generic error.
  */
@@ -289,6 +313,8 @@ export async function createItem(
     select: { id: true },
   });
   if (!type) return null;
+
+  const collectionIds = await ownedCollectionIds(userId, data.collectionIds);
 
   const created = await prisma.item.create({
     data: {
@@ -309,6 +335,7 @@ export async function createItem(
           create: { name },
         })),
       },
+      collections: { create: collectionLinks(collectionIds) },
     },
     select: { id: true },
   });
@@ -324,6 +351,9 @@ export async function createItem(
  * Only fields present on `data` are written — an undefined field is left as-is;
  * a null field is cleared. Tags are fully replaced: existing links are dropped
  * (`set: []`) and the given names are connected, creating any that don't exist.
+ * Collection membership is likewise replaced when `collectionIds` is given (the
+ * ids are filtered to the user's own collections first), and left untouched when
+ * it's omitted.
  */
 export async function updateItem(
   id: string,
@@ -352,6 +382,15 @@ export async function updateItem(
   if (data.content !== undefined) updateData.content = data.content;
   if (data.language !== undefined) updateData.language = data.language;
   if (data.url !== undefined) updateData.url = data.url;
+
+  if (data.collectionIds !== undefined) {
+    const collectionIds = await ownedCollectionIds(userId, data.collectionIds);
+    // Replace membership: drop this item's join rows, then relink the survivors.
+    updateData.collections = {
+      deleteMany: {},
+      create: collectionLinks(collectionIds),
+    };
+  }
 
   await prisma.item.update({ where: { id }, data: updateData });
 

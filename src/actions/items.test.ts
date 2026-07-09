@@ -54,12 +54,18 @@ describe("createItem action", () => {
     auth.mockResolvedValue({ user: { id: "user_1" } });
     createItemQuery.mockResolvedValue({ id: "item_new", title: "New" });
 
-    await createItem({ type: "snippet", title: "  New  ", tags: [" react ", ""] });
+    await createItem({
+      type: "snippet",
+      title: "  New  ",
+      tags: [" react ", ""],
+      collectionIds: [" col_a ", "col_a"],
+    });
 
     expect(createItemQuery).toHaveBeenCalledWith("user_1", {
       type: "snippet",
       title: "New",
       tags: ["react"],
+      collectionIds: ["col_a"],
     });
   });
 
@@ -123,6 +129,21 @@ describe("updateItem action", () => {
       expect(result.issues?.title).toBeDefined();
     }
     expect(updateItemQuery).not.toHaveBeenCalled();
+  });
+
+  it("passes collectionIds through to the query when given", async () => {
+    auth.mockResolvedValue({ user: { id: "user_1" } });
+    updateItemQuery.mockResolvedValue({ id: "item_1", title: "Updated" });
+
+    await updateItem("item_1", {
+      title: "Updated",
+      collectionIds: ["col_a", "col_a", " col_b "],
+    });
+
+    expect(updateItemQuery.mock.calls[0][2].collectionIds).toEqual([
+      "col_a",
+      "col_b",
+    ]);
   });
 
   it("passes the parsed data and owner id to the query", async () => {

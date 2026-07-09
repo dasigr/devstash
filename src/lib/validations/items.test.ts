@@ -164,3 +164,37 @@ describe("createItemSchema", () => {
     expect(parsed.tags).toEqual(["git"]);
   });
 });
+
+describe("collectionIds", () => {
+  it("defaults to an empty array on create when omitted", () => {
+    const parsed = createItemSchema.parse({ type: "note", title: "x" });
+    expect(parsed.collectionIds).toEqual([]);
+  });
+
+  it("stays undefined on update when omitted, so membership is untouched", () => {
+    const parsed = updateItemSchema.parse({ title: "x" });
+    expect(parsed.collectionIds).toBeUndefined();
+  });
+
+  it("distinguishes an empty array (clear membership) from omission", () => {
+    const parsed = updateItemSchema.parse({ title: "x", collectionIds: [] });
+    expect(parsed.collectionIds).toEqual([]);
+  });
+
+  it("trims, drops empties, and de-duplicates ids", () => {
+    const input = { title: "x", collectionIds: [" col_a ", "col_a", "", "col_b"] };
+    expect(updateItemSchema.parse(input).collectionIds).toEqual([
+      "col_a",
+      "col_b",
+    ]);
+    expect(
+      createItemSchema.parse({ type: "note", ...input }).collectionIds,
+    ).toEqual(["col_a", "col_b"]);
+  });
+
+  it("rejects a non-array value", () => {
+    expect(
+      updateItemSchema.safeParse({ title: "x", collectionIds: "col_a" }).success,
+    ).toBe(false);
+  });
+});

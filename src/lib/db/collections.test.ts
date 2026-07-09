@@ -23,10 +23,31 @@ vi.mock("@/generated/prisma/client", () => ({
 
 import {
   createCollection,
+  getCollectionOptions,
   getCollectionStats,
   getRecentCollections,
   getSidebarCollections,
 } from "@/lib/db/collections";
+
+describe("getCollectionOptions", () => {
+  beforeEach(() => {
+    findMany.mockReset();
+  });
+
+  it("returns the given user's collections alphabetically", async () => {
+    const options = [
+      { id: "col_a", name: "AI Workflows" },
+      { id: "col_b", name: "React Patterns" },
+    ];
+    findMany.mockResolvedValue(options);
+
+    expect(await getCollectionOptions("user_1")).toEqual(options);
+    expect(findMany.mock.calls[0][0]).toMatchObject({
+      where: { userId: "user_1" },
+      orderBy: { name: "asc" },
+    });
+  });
+});
 
 // These queries back the dashboard grid, the stats tiles, and the sidebar. Each
 // must filter by userId or a signed-in user sees other people's collections.
