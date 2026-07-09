@@ -1,16 +1,35 @@
-# Current Feature
+# Current Feature: Collection Create
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+- The top bar's **New Collection** button (currently display-only) opens a modal dialog for creating a collection.
+- The modal has the fields needed for a collection: **Name** (required) and **Description** (optional).
+- Creating persists a new `Collection` owned by the signed-in user (`userId` set from the session — never trusted from the client).
+- Success fires a success toast and closes the modal; failure fires an error toast and leaves the modal open with the input intact.
+- After a successful save the UI reflects the new collection everywhere it appears — the dashboard's Collections grid, the sidebar's Collections list, and the Collections stat tile — via `router.refresh()`.
+- Server-side Zod validation is the source of truth; the client's disabled-submit is a UX guard only.
+- New/changed server actions and `lib/db` functions are covered by Vitest; `npm run test` and `npm run build` pass.
 
 ## Notes
 
-<!-- Additional context, constraints, or details from spec -->
+Mirror the existing **item create** implementation end to end — same file layout, same result shapes, same guards:
+
+- **Validation** — add `createCollectionSchema` to a new `src/lib/validations/collections.ts`, following `src/lib/validations/items.ts` (trimmed required `name`, `emptyToNull`-preprocessed optional-nullable `description`).
+- **Query** — add `createCollection(userId, data)` to `src/lib/db/collections.ts`, alongside the existing owner-scoped reads. Return the created row in a shape the UI can use.
+- **Server action** — add `src/actions/collections.ts` with `"use server"`, an `auth()` guard, `safeParse` (returning `issues` via `z.flattenError`), try/catch → generic error, and the `{ success, data | error }` (`ActionResult<T>`) pattern from `src/actions/items.ts`.
+- **UI** — new `src/components/dashboard/CreateCollectionDialog.tsx` (client), modeled on `CreateItemDialog.tsx`: the Base UI `Dialog` wrapper (`src/components/ui/dialog.tsx`), `toastManager` for the toasts, `router.refresh()` on success, submit disabled while the name is empty or a save is in flight. Wire it into `TopBar.tsx` in place of the display-only `New Collection` button.
+
+Scope + constraints:
+
+- **Reads stay in server components** through `lib/db` (they already are: `getRecentCollections`, `getSidebarCollections`, `getCollectionStats`).
+- **Client-side mutation goes through the server action**, matching item create — that *is* the item pattern. API routes are reserved for the cases the coding standards list (webhooks, uploads, client fetches like the drawer's `GET /api/items/[id]`); collection create needs none, so don't add one unless a client-side fetch turns up.
+- **Owner scoping** — every collection query already takes a `userId`; the create path must too. Per the multi-tenant fix note in History, any future add-item-to-collection write must scope *both* sides of the link.
+- **No schema change / no migration** — `Collection` already has `name`, `description`, `isFavorite`, `defaultTypeId`, `userId`.
+- Out of scope: editing, deleting, favoriting, `defaultTypeId` selection, and adding items to a collection. Name + description only.
 
 ## History
 

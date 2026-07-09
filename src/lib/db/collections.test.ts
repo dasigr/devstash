@@ -2,14 +2,15 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock the Prisma client so the queries run without a database. `vi.hoisted`
 // lets the mock factory reference the spies (vi.mock is hoisted above imports).
-const { findMany, count, queryRaw } = vi.hoisted(() => ({
+const { findMany, count, create, queryRaw } = vi.hoisted(() => ({
   findMany: vi.fn(),
   count: vi.fn(),
+  create: vi.fn(),
   queryRaw: vi.fn(),
 }));
 vi.mock("@/lib/prisma", () => ({
   prisma: {
-    collection: { findMany, count },
+    collection: { findMany, count, create },
     $queryRaw: queryRaw,
   },
 }));
@@ -21,6 +22,7 @@ vi.mock("@/generated/prisma/client", () => ({
 }));
 
 import {
+  createCollection,
   getCollectionStats,
   getRecentCollections,
   getSidebarCollections,
@@ -111,6 +113,76 @@ describe("owner-scoped collection queries", () => {
     findMany.mockResolvedValue([]);
 
     expect(await getRecentCollections("user_1")).toEqual([]);
+    expect(queryRaw).not.toHaveBeenCalled();
+  });
+});
+
+describe("createCollection", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("connects the collection to the owning user", async () => {
+    create.mockResolvedValue({
+      id: "col_1",
+      name: "React Patterns",
+      description: null,
+      isFavorite: false,
+    });
+
+    await createCollection("user_1", { name: "React Patterns" });
+
+    const args = create.mock.calls[0][0];
+    expect(args.data.name).toBe("React Patterns");
+    expect(args.data.user).toEqual({ connect: { id: "user_1" } });
+  });
+
+  it("stores a missing description as null", async () => {
+    create.mockResolvedValue({
+      id: "col_1",
+      name: "React Patterns",
+      description: null,
+      isFavorite: false,
+    });
+
+    await createCollection("user_1", { name: "React Patterns" });
+
+    expect(create.mock.calls[0][0].data.description).toBeNull();
+  });
+
+  it("returns a dashboard-shaped collection with no items", async () => {
+    create.mockResolvedValue({
+      id: "col_1",
+      name: "React Patterns",
+      description: "Hooks and helpers",
+      isFavorite: false,
+    });
+
+    const collection = await createCollection("user_1", {
+      name: "React Patterns",
+      description: "Hooks and helpers",
+    });
+
+    expect(collection).toEqual({
+      id: "col_1",
+      name: "React Patterns",
+      description: "Hooks and helpers",
+      isFavorite: false,
+      itemCount: 0,
+      itemTypes: [],
+    });
+  });
+
+  it("does not run the tally query for a brand-new collection", async () => {
+    create.mockResolvedValue({
+      id: "col_1",
+      name: "React Patterns",
+      description: null,
+      isFavorite: false,
+    });
+
+    await createCollection("user_1", { name: "React Patterns" });
+
     expect(queryRaw).not.toHaveBeenCalled();
   });
 });
