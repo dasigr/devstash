@@ -1,14 +1,35 @@
-# Current Feature
+# Current Feature: Collection Edit & Delete
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+- On `/collections/[id]`, add an action row with **Edit**, **Delete**, and **Favorite** buttons.
+- **Edit** opens a modal to change the collection's metadata (name, description), mirroring `CreateCollectionDialog`.
+- **Delete** asks for confirmation first, then deletes the collection and returns to `/collections`.
+- Deleting a collection **must not delete its items** — only the `ItemCollection` join rows go away, so the items survive and simply stop belonging to that collection.
+- **Favorite** renders as an icon/button only — no toggle behavior, no mutation. Deferred.
+- On the collection cards at `/collections` and `/dashboard`, add a **three-dots menu** with Edit, Delete, and Favorite.
+- Clicking anywhere else on a card still navigates to that collection's page.
 
 ## Notes
+
+- **No schema/migration.** `ItemCollection` already declares `onDelete: Cascade` on the collection side, so `prisma.collection.delete` removes the join rows and leaves `Item` untouched. Verify this rather than hand-deleting links.
+- **Owner-scope every write.** Follow the `deleteItem` precedent in `src/lib/db/items.ts`: a single atomic `deleteMany({ where: { id, userId } })` returning `count > 0`, not `findFirst`-then-`delete` (no TOCTOU window, still guards IDOR). Same for update — scope by `{ id, userId }`.
+- **Layers to touch**, mirroring the Collection Create and Item Delete features:
+  - `src/lib/validations/collections.ts` — add `updateCollectionSchema` (reuse the `emptyToNull` description handling).
+  - `src/lib/db/collections.ts` — `updateCollection(id, userId, data)` and `deleteCollection(id, userId)`.
+  - `src/actions/collections.ts` — `updateCollection` / `deleteCollection` server actions: `"use server"`, `auth()` guard, Zod `safeParse` with `z.flattenError`, try/catch → generic error, `ActionResult<T>`.
+  - Components: an `EditCollectionDialog` (Base UI `Dialog` wrapper) and a delete confirmation (Base UI `AlertDialog` wrapper, as `DeleteItemButton` uses). Do **not** pull in Radix.
+- **Card interaction.** `CollectionCard` currently *is* a `<Link>`. A dropdown trigger nested inside an anchor is invalid, so restructure: make the card a container, keep the link as the click surface (or use the `role="link"` + `onKeyDown` pattern `FileListRow`/`ItemCardButton` already use for the same reason), and have the menu trigger `stopPropagation` + `preventDefault` so opening it never navigates.
+- Reuse the existing `dropdown-menu` wrapper (`src/components/ui/dropdown-menu.tsx`, already used by `SidebarUser`).
+- `CollectionCard` is a server component today; adding a menu makes it (or an extracted wrapper) a client component.
+- After a mutation: `toastManager` toast + `router.refresh()`. All three collection surfaces (dashboard grid, `/collections`, sidebar) are server reads, so one refresh updates them all. Delete from the detail page needs `router.push("/collections")` instead.
+- **Test scope** (Vitest, actions + lib only): validation schema, the owner-scoped `where` clauses on update/delete, `count > 0` → boolean, and the action guards (unauth, validation issues, not-found, thrown → generic). Components stay untested.
+- Verify in a real browser with Playwright. Use **`[data-slot=dialog-content]`** / **`[data-slot=sheet-content]`** for modal assertions — `[role=dialog]` matches the always-present mobile sidebar `<aside>` and has produced false positives twice.
+- Out of scope: favorite toggling, `defaultTypeId` selection, removing a single item from a collection.
 
 <!-- Additional context, constraints, or details from spec -->
 

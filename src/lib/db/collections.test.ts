@@ -2,16 +2,36 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock the Prisma client so the queries run without a database. `vi.hoisted`
 // lets the mock factory reference the spies (vi.mock is hoisted above imports).
-const { findMany, findFirst, count, create, queryRaw } = vi.hoisted(() => ({
+const {
+  findMany,
+  findFirst,
+  findUniqueOrThrow,
+  count,
+  create,
+  updateMany,
+  deleteMany,
+  queryRaw,
+} = vi.hoisted(() => ({
   findMany: vi.fn(),
   findFirst: vi.fn(),
+  findUniqueOrThrow: vi.fn(),
   count: vi.fn(),
   create: vi.fn(),
+  updateMany: vi.fn(),
+  deleteMany: vi.fn(),
   queryRaw: vi.fn(),
 }));
 vi.mock("@/lib/prisma", () => ({
   prisma: {
-    collection: { findMany, findFirst, count, create },
+    collection: {
+      findMany,
+      findFirst,
+      findUniqueOrThrow,
+      count,
+      create,
+      updateMany,
+      deleteMany,
+    },
     $queryRaw: queryRaw,
   },
 }));
@@ -24,6 +44,8 @@ vi.mock("@/generated/prisma/client", () => ({
 
 import {
   createCollection,
+  deleteCollection,
+  updateCollection,
   getAllCollections,
   getCollectionDetail,
   getCollectionOptions,
@@ -341,5 +363,134 @@ describe("createCollection", () => {
     await createCollection("user_1", { name: "React Patterns" });
 
     expect(queryRaw).not.toHaveBeenCalled();
+  });
+});
+
+describe("updateCollection", () => {
+  beforeEach(() => {
+    updateMany.mockReset();
+    findUniqueOrThrow.mockReset();
+    queryRaw.mockReset();
+  });
+
+  it("scopes the write to the id and the owner", async () => {
+    updateMany.mockResolvedValue({ count: 1 });
+    findUniqueOrThrow.mockResolvedValue({
+      id: "col_1",
+      name: "Renamed",
+      description: "New description",
+      isFavorite: false,
+    });
+    queryRaw.mockResolvedValue([]);
+
+    await updateCollection("col_1", "user_1", {
+      name: "Renamed",
+      description: "New description",
+    });
+
+    expect(updateMany).toHaveBeenCalledWith({
+      where: { id: "col_1", userId: "user_1" },
+      data: { name: "Renamed", description: "New description" },
+    });
+  });
+
+  it("returns null without re-reading when nothing matched", async () => {
+    updateMany.mockResolvedValue({ count: 0 });
+
+    const result = await updateCollection("col_other", "user_1", {
+      name: "Renamed",
+    });
+
+    expect(result).toBeNull();
+    expect(findUniqueOrThrow).not.toHaveBeenCalled();
+  });
+
+  it("clears the description when it is omitted or null", async () => {
+    updateMany.mockResolvedValue({ count: 1 });
+    findUniqueOrThrow.mockResolvedValue({
+      id: "col_1",
+      name: "Renamed",
+      description: null,
+      isFavorite: false,
+    });
+    queryRaw.mockResolvedValue([]);
+
+    await updateCollection("col_1", "user_1", { name: "Renamed" });
+
+    expect(updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { name: "Renamed", description: null } }),
+    );
+  });
+
+  it("returns the refreshed card shape with its type tally", async () => {
+    updateMany.mockResolvedValue({ count: 1 });
+    findUniqueOrThrow.mockResolvedValue({
+      id: "col_1",
+      name: "Renamed",
+      description: null,
+      isFavorite: true,
+    });
+    queryRaw.mockResolvedValue([
+      {
+        collectionId: "col_1",
+        typeId: "t_snippet",
+        typeName: "snippet",
+        typeColor: "#3b82f6",
+        typeIcon: "Code",
+        count: 3,
+      },
+      {
+        collectionId: "col_1",
+        typeId: "t_note",
+        typeName: "note",
+        typeColor: "#fde047",
+        typeIcon: "StickyNote",
+        count: 1,
+      },
+    ]);
+
+    const result = await updateCollection("col_1", "user_1", {
+      name: "Renamed",
+    });
+
+    expect(result).toEqual({
+      id: "col_1",
+      name: "Renamed",
+      description: null,
+      isFavorite: true,
+      itemCount: 4,
+      itemTypes: [
+        { id: "t_snippet", name: "snippet", color: "#3b82f6", icon: "Code" },
+        { id: "t_note", name: "note", color: "#fde047", icon: "StickyNote" },
+      ],
+    });
+  });
+});
+
+describe("deleteCollection", () => {
+  beforeEach(() => {
+    deleteMany.mockReset();
+  });
+
+  it("scopes the delete to the id and the owner", async () => {
+    deleteMany.mockResolvedValue({ count: 1 });
+
+    await deleteCollection("col_1", "user_1");
+
+    expect(deleteMany).toHaveBeenCalledWith({
+      where: { id: "col_1", userId: "user_1" },
+    });
+  });
+
+  it("reports true when a row was deleted", async () => {
+    deleteMany.mockResolvedValue({ count: 1 });
+
+    await expect(deleteCollection("col_1", "user_1")).resolves.toBe(true);
+  });
+
+  it("reports false for an unknown or foreign collection", async () => {
+    deleteMany.mockResolvedValue({ count: 0 });
+
+    await expect(deleteCollection("col_other", "user_1")).resolves.toBe(false);
   });
 });
