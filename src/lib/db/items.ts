@@ -1,6 +1,7 @@
 import { cache } from "react";
 
 import { prisma } from "@/lib/prisma";
+import { deleteFromR2, r2KeyFromUrl } from "@/lib/r2";
 import type { ContentType, Prisma } from "@/generated/prisma/client";
 import type {
   CreateItemInput,
@@ -154,6 +155,7 @@ export interface ItemDetail {
   /** Optional code language (e.g. "TypeScript"). */
   language: string | null;
   url: string | null;
+  fileUrl: string | null;
   fileName: string | null;
   fileSize: number | null;
   tags: string[];
@@ -189,6 +191,7 @@ export async function getItemDetail(
       content: true,
       language: true,
       url: true,
+      fileUrl: true,
       fileName: true,
       fileSize: true,
       isFavorite: true,
@@ -220,6 +223,7 @@ export async function getItemDetail(
     content: item.content,
     language: item.language,
     url: item.url,
+    fileUrl: item.fileUrl,
     fileName: item.fileName,
     fileSize: item.fileSize,
     tags: item.tags.map((tag) => tag.name),
@@ -240,14 +244,16 @@ export async function getItemDetail(
   };
 }
 
-// Link items store their value in `url` (contentType URL); every other creatable
-// type is plain text (contentType TEXT). File/image types aren't creatable here.
+// Storage shape per creatable type: link -> URL, file/image -> FILE (R2), and
+// every text type -> TEXT.
 const CONTENT_TYPE_BY_TYPE: Record<CreateItemInput["type"], ContentType> = {
   snippet: "TEXT",
   prompt: "TEXT",
   command: "TEXT",
   note: "TEXT",
   link: "URL",
+  file: "FILE",
+  image: "FILE",
 };
 
 /**
@@ -275,6 +281,9 @@ export async function createItem(
       content: data.content ?? null,
       language: data.language ?? null,
       url: data.url ?? null,
+      fileUrl: data.fileUrl ?? null,
+      fileName: data.fileName ?? null,
+      fileSize: data.fileSize ?? null,
       user: { connect: { id: userId } },
       itemType: { connect: { id: type.id } },
       tags: {
@@ -334,17 +343,61 @@ export async function updateItem(
 
 /**
  * Delete one item, scoped to its owner so a user can only delete their own
- * (guards against IDOR). `deleteMany` filters by both id and userId in a single
- * atomic statement — a foreign or missing id matches nothing. Returns true when
- * a row was deleted, false otherwise. Cascade deletes remove the item's
+ * (guards against IDOR). We first read the item's fileUrl (owner-scoped), then
+ * delete via `deleteMany` filtered by id + userId, then best-effort remove the
+ * backing R2 object so file/image uploads don't leak. Returns true when a row
+ * was deleted, false otherwise. Cascade deletes remove the item's
  * ItemCollection links and tag join rows per the schema.
  */
 export async function deleteItem(
   id: string,
   userId: string,
 ): Promise<boolean> {
+  const item = await prisma.item.findFirst({
+    where: { id, userId },
+    select: { fileUrl: true },
+  });
+  if (!item) return false;
+
   const { count } = await prisma.item.deleteMany({ where: { id, userId } });
-  return count > 0;
+  if (count === 0) return false;
+
+  // Best-effort R2 cleanup — never let a storage error fail the item delete.
+  if (item.fileUrl) {
+    const key = r2KeyFromUrl(item.fileUrl);
+    if (key) {
+      try {
+        await deleteFromR2(key);
+      } catch (error) {
+        console.error("Failed to delete R2 object for item:", id, error);
+      }
+    }
+  }
+
+  return true;
+}
+
+/** A file-backed item's stored file, for the owner-scoped download proxy. */
+export interface ItemFile {
+  fileUrl: string;
+  fileName: string;
+}
+
+/**
+ * The stored file for a file/image item, scoped to its owner so a user can only
+ * download their own (guards against IDOR). Returns null when the item doesn't
+ * exist, belongs to someone else, or has no file attached.
+ */
+export async function getItemFile(
+  id: string,
+  userId: string,
+): Promise<ItemFile | null> {
+  const item = await prisma.item.findFirst({
+    where: { id, userId },
+    select: { fileUrl: true, fileName: true },
+  });
+  if (!item?.fileUrl) return null;
+  return { fileUrl: item.fileUrl, fileName: item.fileName ?? "download" };
 }
 
 /** A system item type prepared for the sidebar nav. */

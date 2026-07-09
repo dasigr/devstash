@@ -18,10 +18,19 @@ vi.mock("@/lib/prisma", () => ({
   },
 }));
 
+// Mock R2 so deleteItem's storage cleanup runs without AWS. r2KeyFromUrl returns
+// a stub key for any non-empty url so we can assert deleteFromR2 is called.
+const { deleteFromR2, r2KeyFromUrl } = vi.hoisted(() => ({
+  deleteFromR2: vi.fn(),
+  r2KeyFromUrl: vi.fn((url: string) => (url ? "items/u/obj" : null)),
+}));
+vi.mock("@/lib/r2", () => ({ deleteFromR2, r2KeyFromUrl }));
+
 import {
   createItem,
   deleteItem,
   getItemDetail,
+  getItemFile,
   updateItem,
 } from "@/lib/db/items";
 
@@ -35,6 +44,7 @@ function rawItem(overrides: Record<string, unknown> = {}) {
     content: "export function useDebounce() {}",
     language: "typescript",
     url: null,
+    fileUrl: null,
     fileName: null,
     fileSize: null,
     isFavorite: false,
@@ -273,6 +283,31 @@ describe("createItem", () => {
     });
   });
 
+  it("stores a file item as a FILE-content-type item with file metadata", async () => {
+    typeFindFirst.mockResolvedValue({ id: "type_file" });
+    create.mockResolvedValue({ id: "item_file" });
+    findFirst.mockResolvedValue(rawItem({ id: "item_file" }));
+
+    await createItem("user_1", {
+      type: "file",
+      title: "Report",
+      description: null,
+      content: null,
+      language: null,
+      url: null,
+      fileUrl: "https://pub.example.com/items/u/report.pdf",
+      fileName: "report.pdf",
+      fileSize: 12345,
+      tags: [],
+    });
+
+    const data = create.mock.calls[0][0].data;
+    expect(data.contentType).toBe("FILE");
+    expect(data.fileUrl).toBe("https://pub.example.com/items/u/report.pdf");
+    expect(data.fileName).toBe("report.pdf");
+    expect(data.fileSize).toBe(12345);
+  });
+
   it("stores a link as a URL-content-type item", async () => {
     typeFindFirst.mockResolvedValue({ id: "type_link" });
     create.mockResolvedValue({ id: "item_link" });
@@ -311,28 +346,101 @@ describe("createItem", () => {
 
 describe("deleteItem", () => {
   beforeEach(() => {
+    findFirst.mockReset();
     deleteMany.mockReset();
+    deleteFromR2.mockReset();
+    r2KeyFromUrl.mockClear();
   });
 
-  it("scopes the delete to the item id and owner (IDOR guard)", async () => {
+  it("returns false and skips the delete when the item isn't owned", async () => {
+    findFirst.mockResolvedValue(null);
+
+    expect(await deleteItem("nope", "user_1")).toBe(false);
+    expect(deleteMany).not.toHaveBeenCalled();
+    expect(deleteFromR2).not.toHaveBeenCalled();
+  });
+
+  it("scopes both the lookup and delete to the item id and owner (IDOR guard)", async () => {
+    findFirst.mockResolvedValue({ fileUrl: null });
     deleteMany.mockResolvedValue({ count: 1 });
 
     await deleteItem("item_1", "user_1");
 
-    expect(deleteMany).toHaveBeenCalledTimes(1);
+    expect(findFirst.mock.calls[0][0].where).toEqual({
+      id: "item_1",
+      userId: "user_1",
+    });
     expect(deleteMany.mock.calls[0][0].where).toEqual({
       id: "item_1",
       userId: "user_1",
     });
   });
 
-  it("returns true when a row was deleted", async () => {
+  it("returns true and skips R2 for a text item (no fileUrl)", async () => {
+    findFirst.mockResolvedValue({ fileUrl: null });
     deleteMany.mockResolvedValue({ count: 1 });
+
     expect(await deleteItem("item_1", "user_1")).toBe(true);
+    expect(deleteFromR2).not.toHaveBeenCalled();
   });
 
-  it("returns false when nothing matched (missing or not owned)", async () => {
-    deleteMany.mockResolvedValue({ count: 0 });
-    expect(await deleteItem("nope", "user_1")).toBe(false);
+  it("deletes the backing R2 object for a file item", async () => {
+    findFirst.mockResolvedValue({
+      fileUrl: "https://pub.example.com/items/u/report.pdf",
+    });
+    deleteMany.mockResolvedValue({ count: 1 });
+
+    expect(await deleteItem("item_1", "user_1")).toBe(true);
+    expect(deleteFromR2).toHaveBeenCalledWith("items/u/obj");
+  });
+
+  it("still succeeds when R2 cleanup throws (best-effort)", async () => {
+    findFirst.mockResolvedValue({
+      fileUrl: "https://pub.example.com/items/u/report.pdf",
+    });
+    deleteMany.mockResolvedValue({ count: 1 });
+    deleteFromR2.mockRejectedValue(new Error("R2 down"));
+
+    expect(await deleteItem("item_1", "user_1")).toBe(true);
+  });
+});
+
+describe("getItemFile", () => {
+  beforeEach(() => {
+    findFirst.mockReset();
+  });
+
+  it("scopes the lookup to the item id and owner (IDOR guard)", async () => {
+    findFirst.mockResolvedValue({ fileUrl: "https://x/y.pdf", fileName: "y.pdf" });
+    await getItemFile("item_1", "user_1");
+
+    expect(findFirst.mock.calls[0][0].where).toEqual({
+      id: "item_1",
+      userId: "user_1",
+    });
+  });
+
+  it("returns the file when present", async () => {
+    findFirst.mockResolvedValue({ fileUrl: "https://x/y.pdf", fileName: "y.pdf" });
+    expect(await getItemFile("item_1", "user_1")).toEqual({
+      fileUrl: "https://x/y.pdf",
+      fileName: "y.pdf",
+    });
+  });
+
+  it("returns null when the item is missing or has no file", async () => {
+    findFirst.mockResolvedValue(null);
+    expect(await getItemFile("nope", "user_1")).toBeNull();
+
+    findFirst.mockResolvedValue({ fileUrl: null, fileName: null });
+    expect(await getItemFile("item_1", "user_1")).toBeNull();
+  });
+
+  it("defaults the filename when the stored name is null", async () => {
+    findFirst.mockResolvedValue({ fileUrl: "https://x/y", fileName: null });
+    expect(await getItemFile("item_1", "user_1")).toEqual({
+      fileUrl: "https://x/y",
+      fileName: "download",
+    });
   });
 });

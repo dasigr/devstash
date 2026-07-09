@@ -15,7 +15,7 @@ const optionalText = z.preprocess(
   z.string().trim().min(1).nullable().optional(),
 );
 
-/** The text/url system types a user can create from the UI (file/image are Pro). */
+/** The text/url system types a user can create by typing content directly. */
 export const CREATABLE_ITEM_TYPES = [
   "snippet",
   "prompt",
@@ -26,9 +26,22 @@ export const CREATABLE_ITEM_TYPES = [
 
 export type CreatableItemType = (typeof CREATABLE_ITEM_TYPES)[number];
 
+/** The file-backed (Pro) system types created via upload. */
+export const FILE_ITEM_TYPES = ["file", "image"] as const;
+
+export type FileItemType = (typeof FILE_ITEM_TYPES)[number];
+
+/** Every type the "New item" dialog can create (text/url + file/image). */
+export const NEW_ITEM_TYPES = [
+  ...CREATABLE_ITEM_TYPES,
+  ...FILE_ITEM_TYPES,
+] as const;
+
+export type NewItemType = (typeof NEW_ITEM_TYPES)[number];
+
 export const createItemSchema = z
   .object({
-    type: z.enum(CREATABLE_ITEM_TYPES),
+    type: z.enum(NEW_ITEM_TYPES),
     title: z.string().trim().min(1, "Title is required"),
     description: optionalText,
     // Content preserves internal whitespace (code), so it isn't trimmed.
@@ -38,6 +51,13 @@ export const createItemSchema = z
       emptyToNull,
       z.string().trim().url("Enter a valid URL").nullable().optional(),
     ),
+    // File fields — set by the upload flow for file/image items.
+    fileUrl: z.preprocess(
+      emptyToNull,
+      z.string().trim().url("Invalid file URL").nullable().optional(),
+    ),
+    fileName: optionalText,
+    fileSize: z.number().int().positive().nullable().optional(),
     tags: z
       .array(z.string())
       .default([])
@@ -49,6 +69,31 @@ export const createItemSchema = z
   .refine((data) => data.type !== "link" || !!data.url, {
     message: "URL is required",
     path: ["url"],
+  })
+  // File/image items must carry the uploaded file's metadata.
+  .superRefine((data, ctx) => {
+    if (data.type !== "file" && data.type !== "image") return;
+    if (!data.fileUrl) {
+      ctx.addIssue({
+        code: "custom",
+        message: "A file is required",
+        path: ["fileUrl"],
+      });
+    }
+    if (!data.fileName) {
+      ctx.addIssue({
+        code: "custom",
+        message: "A file is required",
+        path: ["fileName"],
+      });
+    }
+    if (!data.fileSize) {
+      ctx.addIssue({
+        code: "custom",
+        message: "A file is required",
+        path: ["fileSize"],
+      });
+    }
   });
 
 export type CreateItemInput = z.infer<typeof createItemSchema>;

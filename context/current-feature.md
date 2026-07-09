@@ -1,16 +1,31 @@
-# Current Feature
+# Current Feature: File & Image Upload (Cloudflare R2)
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+- Create an upload API route that streams file/image uploads to Cloudflare R2.
+- Keep all Prisma/DB functions in `src/lib/db/items.ts` (no separate query file).
+- Build a `FileUpload` component with drag-and-drop and an upload progress indicator.
+- Update the create-item modal to use `FileUpload` for the `file`/`image` types.
+- Delete the backing R2 object when an item is deleted.
+- Create a download proxy API route (server-side fetch from R2 to avoid CORS).
+- Add a download button in the `ItemDrawer` for file types.
+- Display an image preview for images and file info (name/size) for files.
 
 ## Notes
 
-<!-- Additional context, constraints, or details from spec -->
+- Applies to the two Pro system types only: **File** (`#6b7280`, gray) and **Image** (`#ec4899`, pink). Text/url types are unchanged.
+- Storage shape is `FILE` (`ContentType.FILE`); items persist `fileUrl`, `fileName`, `fileSize` (already on the `Item` model — verify, likely no migration needed).
+- Follow the existing Base-UI-wrapper convention for any new UI primitives (avatar/dropdown/sheet/dialog/alert-dialog/toast) rather than pulling in Radix.
+- File constraints:
+  - **Images** — max **5 MB**; `.png`, `.jpg`, `.jpeg`, `.gif`, `.webp`, `.svg`. MIME: `image/png`, `image/jpeg`, `image/gif`, `image/webp`, `image/svg+xml`.
+  - **Files** — max **10 MB**; `.pdf`, `.txt`, `.md`, `.json`, `.yaml`, `.yml`, `.xml`, `.csv`, `.toml`, `.ini`. MIME: `application/pdf`, `text/plain`, `text/markdown`, `application/json`, `application/x-yaml`, `text/yaml`, `application/xml`, `text/xml`, `text/csv`, `application/toml` (`.ini` → `text/plain`).
+- R2 needs S3-compatible credentials/bucket env vars (account id, access key id, secret, bucket, endpoint) — add to `.env`/`.env.example`. Confirm exact names when implementing.
+- Enforce size/extension/MIME constraints server-side in the upload route (source of truth), mirror client-side for UX.
+- Spec: `context/features/file-image-spec.md`.
 
 ## History
 

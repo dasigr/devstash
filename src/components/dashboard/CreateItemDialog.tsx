@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { Loader2, Plus } from "lucide-react";
 
 import { createItem } from "@/actions/items";
-import type { CreatableItemType } from "@/lib/validations/items";
+import type { NewItemType } from "@/lib/validations/items";
+import { fileExtension } from "@/lib/validations/upload";
 import { toastManager } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 import { editorLanguageLabel, isCodeType, isMarkdownType } from "@/lib/code-types";
@@ -24,10 +25,11 @@ import {
 import { ItemTypeIcon } from "@/components/dashboard/ItemTypeIcon";
 import { CodeEditor } from "@/components/dashboard/CodeEditor";
 import { MarkdownEditor } from "@/components/dashboard/MarkdownEditor";
+import { FileUpload, type UploadedFile } from "@/components/dashboard/FileUpload";
 
 /** The selectable creatable types, with their display label / icon / color. */
 const TYPES: {
-  value: CreatableItemType;
+  value: NewItemType;
   label: string;
   icon: string;
   color: string;
@@ -37,17 +39,20 @@ const TYPES: {
   { value: "note", label: "Note", icon: "StickyNote", color: "#fde047" },
   { value: "command", label: "Command", icon: "Terminal", color: "#f97316" },
   { value: "link", label: "Link", icon: "Link", color: "#10b981" },
+  { value: "file", label: "File", icon: "File", color: "#6b7280" },
+  { value: "image", label: "Image", icon: "Image", color: "#ec4899" },
 ];
 
 // Which type-specific fields each type exposes (mirrors the edit form / spec).
-const CONTENT_TYPES = new Set<CreatableItemType>([
+const CONTENT_TYPES = new Set<NewItemType>([
   "snippet",
   "prompt",
   "command",
   "note",
 ]);
-const LANGUAGE_TYPES = new Set<CreatableItemType>(["snippet", "command"]);
-const URL_TYPES = new Set<CreatableItemType>(["link"]);
+const LANGUAGE_TYPES = new Set<NewItemType>(["snippet", "command"]);
+const URL_TYPES = new Set<NewItemType>(["link"]);
+const FILE_TYPES = new Set<NewItemType>(["file", "image"]);
 
 /** Trim a value and treat blank as null (matches the server-side coercion). */
 function blankToNull(value: string): string | null {
@@ -64,12 +69,14 @@ export function CreateItemDialog() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
 
-  const [type, setType] = useState<CreatableItemType>("snippet");
+  const [type, setType] = useState<NewItemType>("snippet");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [content, setContent] = useState("");
   const [language, setLanguage] = useState("");
   const [url, setUrl] = useState("");
+  const [file, setFile] = useState<UploadedFile | null>(null);
+  const [uploading, setUploading] = useState(false);
   const [tags, setTags] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -77,11 +84,15 @@ export function CreateItemDialog() {
   const showContent = CONTENT_TYPES.has(type);
   const showLanguage = LANGUAGE_TYPES.has(type);
   const showUrl = URL_TYPES.has(type);
+  const showFile = FILE_TYPES.has(type);
   const useCodeEditor = isCodeType(type);
   const useMarkdownEditor = isMarkdownType(type);
 
   const titleEmpty = title.trim() === "";
   const urlMissing = showUrl && url.trim() === "";
+  const fileMissing = showFile && !file;
+  const submitDisabled =
+    titleEmpty || urlMissing || fileMissing || uploading || pending;
 
   function reset() {
     setType("snippet");
@@ -90,6 +101,8 @@ export function CreateItemDialog() {
     setContent("");
     setLanguage("");
     setUrl("");
+    setFile(null);
+    setUploading(false);
     setTags("");
     setError(null);
   }
@@ -99,9 +112,27 @@ export function CreateItemDialog() {
     if (!next) reset();
   }
 
+  // Switching type clears the type-specific fields so stale file/content data
+  // never rides along to a mismatched type.
+  function handleTypeChange(next: NewItemType) {
+    setType(next);
+    setFile(null);
+    setUploading(false);
+    setError(null);
+  }
+
+  // Default the title to the uploaded filename (sans extension) when it's blank.
+  function handleFileChange(next: UploadedFile | null) {
+    setFile(next);
+    if (next && title.trim() === "") {
+      const ext = fileExtension(next.fileName);
+      setTitle(ext ? next.fileName.slice(0, -ext.length) : next.fileName);
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (titleEmpty || urlMissing || pending) return;
+    if (submitDisabled) return;
     setError(null);
 
     const payload: Record<string, unknown> = {
@@ -116,6 +147,11 @@ export function CreateItemDialog() {
     if (showContent) payload.content = content === "" ? null : content;
     if (showLanguage) payload.language = blankToNull(language);
     if (showUrl) payload.url = blankToNull(url);
+    if (showFile && file) {
+      payload.fileUrl = file.fileUrl;
+      payload.fileName = file.fileName;
+      payload.fileSize = file.fileSize;
+    }
 
     setPending(true);
     try {
@@ -178,7 +214,7 @@ export function CreateItemDialog() {
                   <button
                     key={t.value}
                     type="button"
-                    onClick={() => setType(t.value)}
+                    onClick={() => handleTypeChange(t.value)}
                     aria-pressed={selected}
                     className={cn(
                       "flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm transition-colors",
@@ -304,6 +340,20 @@ export function CreateItemDialog() {
             </div>
           )}
 
+          {showFile && (
+            <div className="space-y-1.5">
+              <span className="text-sm font-medium text-foreground">
+                {type === "image" ? "Image" : "File"}
+              </span>
+              <FileUpload
+                kind={type === "image" ? "image" : "file"}
+                value={file}
+                onChange={handleFileChange}
+                onUploadingChange={setUploading}
+              />
+            </div>
+          )}
+
           <div className="space-y-1.5">
             <label
               htmlFor="new-item-tags"
@@ -337,7 +387,7 @@ export function CreateItemDialog() {
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={titleEmpty || urlMissing || pending}>
+            <Button type="submit" disabled={submitDisabled}>
               {pending && <Loader2 className="animate-spin" />}
               Create item
             </Button>
