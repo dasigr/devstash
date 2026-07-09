@@ -1,16 +1,37 @@
-# Current Feature
+# Current Feature: Settings Page
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+- A new `/settings` page exists, protected like every other authed route (unauthenticated visitors get `307 → /sign-in?callbackUrl=%2Fsettings`).
+- The sidebar's user-avatar dropdown gains a **Settings** entry (between Profile and Sign out) that navigates to `/settings`.
+- The **Change password** section moves off `/profile` and onto `/settings` — same form, same `POST /api/auth/change-password`, still rendered only for accounts that have a password (`hasPassword`), never for OAuth-only accounts.
+- The **Delete account** danger zone moves off `/profile` and onto `/settings` — same confirmation dialog, same `DELETE /api/auth/account`, same sign-out-on-success.
+- `/profile` keeps its account-info card (avatar, name, email, Plan, Member since, Sign out) and its Usage stats, and no longer renders either moved section.
+- `npm run test`, `npm run lint`, and `npm run build` stay clean.
 
 ## Notes
 
-<!-- Additional context, constraints, or details from spec -->
+**Scope is a move, not a rewrite.** `ChangePasswordForm` and `DeleteAccountDialog` already exist and work; the API routes behind them (`/api/auth/change-password`, `/api/auth/account`) are untouched. This feature adds a route, adds a dropdown link, and relocates two `<section>`s.
+
+**Terminology.** The spec said "forgot password", but `/profile` has no such section — it has **Change password** (current password → new password). That form is what moves. The separate `/forgot-password` email flow (reachable from the sign-in page) is unrelated and stays where it is. Confirmed with the user.
+
+**Files expected to change:**
+
+- `src/app/settings/page.tsx` — new server component. Mirrors `/profile`'s narrow centered shell (`max-w-2xl`, "Back to dashboard" link), `await connection()`, `getProfile()` with a defensive `redirect("/sign-in")`.
+- `src/components/dashboard/SidebarUser.tsx` — add a `Settings` (lucide) `DropdownMenuItem` routing to `/settings`.
+- `src/proxy.ts` — add `"/settings/:path*"` to the `matcher` (`:path*` matches zero segments, so it covers `/settings` itself — same as `/collections`).
+- `src/app/profile/page.tsx` — delete both moved sections and their now-unused imports.
+- `src/components/profile/{ChangePasswordForm,DeleteAccountDialog}.tsx` — move to `src/components/settings/`, since `src/components/[feature]/` is the documented convention and they no longer belong to the profile feature.
+
+**Data layer:** `getProfile()` (`src/lib/db/profile.ts`) already returns `hasPassword` and is what gates the Change password section — `/settings` reuses it as-is. It is **not** wrapped in React `cache()` today, but `/settings` only calls it once (no `generateMetadata` needing the same row), so no dedupe is required.
+
+**Testing:** no new server actions or utilities, so per the Vitest scope (`src/actions/*`, `src/lib/*` only) this feature likely adds **no unit tests** — the existing 240 must still pass. Verification is browser-based: dropdown → `/settings`, change-password happy/wrong-password paths, delete-account confirmation renders, `/profile` no longer shows either section, and the unauthenticated redirect.
+
+**Out of scope:** theme/appearance settings, notification preferences, billing/Stripe management, editing name or email, and any change to the profile page's account-info or Usage sections.
 
 ## History
 
