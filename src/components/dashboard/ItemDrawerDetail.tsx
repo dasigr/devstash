@@ -6,6 +6,7 @@ import {
   ChevronRight,
   Clock,
   Copy,
+  File as FileIcon,
   Pencil,
   Pin,
   Star,
@@ -15,10 +16,12 @@ import {
 import type { ItemDetail } from "@/lib/db/items";
 import { cn } from "@/lib/utils";
 import { isCodeType, isMarkdownType } from "@/lib/code-types";
+import { formatBytes } from "@/lib/validations/upload";
 import { Button } from "@/components/ui/button";
 import { SheetClose, SheetTitle } from "@/components/ui/sheet";
 import { ItemTypeBadge } from "@/components/dashboard/ItemTypeBadge";
 import { DeleteItemButton } from "@/components/dashboard/DeleteItemButton";
+import { DownloadFileButton } from "@/components/dashboard/DownloadFileButton";
 import { CodeEditor } from "@/components/dashboard/CodeEditor";
 import { MarkdownEditor } from "@/components/dashboard/MarkdownEditor";
 
@@ -158,9 +161,48 @@ export function ItemDrawerDetail({
           </span>
         </div>
 
-        {/* Content — code types get the Monaco editor (readonly), note/prompt get
-            the Markdown preview; everything else keeps the boxed pre / link. */}
-        {isCodeType(item.itemType.name) && item.contentType !== "URL" ? (
+        {/* Content — file/image items show a preview + download; code types get
+            the Monaco editor (readonly), note/prompt get the Markdown preview;
+            everything else keeps the boxed pre / link. */}
+        {item.contentType === "FILE" ? (
+          <div className="flex flex-col gap-3">
+            {item.itemType.name === "image" && item.fileUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={item.fileUrl}
+                alt={item.fileName ?? item.title}
+                className="max-h-96 w-full rounded-lg border border-border object-contain"
+              />
+            ) : (
+              <div className="flex items-center gap-3 rounded-lg border border-border p-4">
+                <div className="flex size-12 shrink-0 items-center justify-center rounded-md border border-border bg-muted">
+                  <FileIcon className="size-6 text-muted-foreground" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-foreground">
+                    {item.fileName ?? "Untitled file"}
+                  </p>
+                  {item.fileSize != null && (
+                    <p className="text-xs text-muted-foreground">
+                      {formatBytes(item.fileSize)}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+            <div className="flex items-center justify-between gap-2">
+              {item.fileName && (
+                <span className="min-w-0 truncate text-xs text-muted-foreground">
+                  {item.fileName}
+                  {item.fileSize != null && ` · ${formatBytes(item.fileSize)}`}
+                </span>
+              )}
+              {item.fileUrl && (
+                <DownloadFileButton itemId={item.id} className="ml-auto shrink-0" />
+              )}
+            </div>
+          </div>
+        ) : isCodeType(item.itemType.name) && item.contentType !== "URL" ? (
           <CodeEditor
             value={value}
             language={item.language}

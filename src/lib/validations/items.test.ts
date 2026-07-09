@@ -71,7 +71,7 @@ describe("updateItemSchema", () => {
 describe("createItemSchema", () => {
   it("requires a valid creatable type", () => {
     expect(
-      createItemSchema.safeParse({ type: "file", title: "x" }).success,
+      createItemSchema.safeParse({ type: "bogus", title: "x" }).success,
     ).toBe(false);
     expect(
       createItemSchema.safeParse({ title: "x" }).success,
@@ -79,6 +79,32 @@ describe("createItemSchema", () => {
     expect(
       createItemSchema.safeParse({ type: "snippet", title: "x" }).success,
     ).toBe(true);
+  });
+
+  it("requires file metadata for file/image items", () => {
+    // A file/image type with no uploaded file fails.
+    for (const type of ["file", "image"] as const) {
+      const missing = createItemSchema.safeParse({ type, title: "x" });
+      expect(missing.success).toBe(false);
+      if (!missing.success) {
+        const paths = missing.error.issues.map((i) => i.path.join("."));
+        expect(paths).toContain("fileUrl");
+        expect(paths).toContain("fileName");
+        expect(paths).toContain("fileSize");
+      }
+    }
+
+    // With all three file fields it parses and keeps them.
+    const ok = createItemSchema.parse({
+      type: "image",
+      title: "Diagram",
+      fileUrl: "https://pub.example.com/items/u/x.png",
+      fileName: "x.png",
+      fileSize: 2048,
+    });
+    expect(ok.fileUrl).toBe("https://pub.example.com/items/u/x.png");
+    expect(ok.fileName).toBe("x.png");
+    expect(ok.fileSize).toBe(2048);
   });
 
   it("requires a non-empty title and trims it", () => {
