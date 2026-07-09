@@ -1,16 +1,38 @@
-# Current Feature
+# Current Feature: Pagination
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+- Paginate the `/items/[type]` listing at `ITEMS_PER_PAGE = 20` per page
+- Paginate the `/collections/[id]` detail page's item grid at `ITEMS_PER_PAGE = 20` per page
+- Paginate the `/collections` list at `COLLECTIONS_PER_PAGE = 20` per page
+- Pagination controls render at the bottom of each paginated list: numbered page links plus prev/next
+- Prev/next are disabled (greyed out) when there is no previous/next page
+- Cap the dashboard's two grids with `DASHBOARD_COLLECTIONS_LIMIT = 8` and `DASHBOARD_RECENT_ITEMS_LIMIT = 8`
+- Queries fetch only the current page's rows (`skip`/`take`) plus a `count` — never the full result set
 
 ## Notes
 
-<!-- Additional context, constraints, or details from spec -->
+Source spec: `context/features/pagination-spec.md`.
+
+- The spec's requirement list names `/items/[type]` and `/collections/[id]`, but it also defines
+  `COLLECTIONS_PER_PAGE`, which only has a home on the `/collections` list page — so all three
+  listings get paginated. (`/collections/[id]` holds items, so it uses `ITEMS_PER_PAGE`.)
+- Constants belong in one shared module (`src/lib/pagination.ts`) alongside a pure page-number
+  helper so it can be unit-tested per the repo's Vitest scope (actions + lib only).
+- Page state travels via a `?page=` search param so pages stay server components and links stay
+  real anchors (shareable, back-button friendly).
+- Existing data-layer functions that must change: `getItemsByType`, `getCollectionDetail`,
+  `getAllCollections` (currently fetches every collection with no `take`), and the dashboard's
+  `getRecentCollections` / `getRecentItems` limits.
+- `getCollectionDetail` currently returns its items nested in one owner-scoped `findFirst`;
+  paginating means splitting the item fetch into its own `skip`/`take` query plus a count.
+- The `/items/images` gallery and `/items/files` list are branches of the same `/items/[type]`
+  page, so they inherit pagination for free — verify both.
+- Out of scope: pagination on the dashboard (it's capped, not paged) and on search results.
 
 ## History
 

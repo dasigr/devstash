@@ -9,17 +9,25 @@ import { TopBar } from "@/components/dashboard/TopBar";
 import { ItemDrawerProvider } from "@/components/dashboard/ItemDrawer";
 import { SectionHeader } from "@/components/dashboard/SectionHeader";
 import { CollectionCard } from "@/components/dashboard/CollectionCard";
+import { Pagination } from "@/components/dashboard/Pagination";
 import { getAllCollections, getSidebarCollections } from "@/lib/db/collections";
 import { getSidebarItemTypes } from "@/lib/db/items";
 import { getCurrentUser } from "@/lib/db/user";
+import { parsePageParam } from "@/lib/pagination";
 
 export const metadata: Metadata = {
   title: "Collections",
 };
 
-export default async function CollectionsPage() {
+export default async function CollectionsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string | string[] }>;
+}) {
   // Read live data per request rather than baking it in at build.
   await connection();
+
+  const requestedPage = parsePageParam((await searchParams).page);
 
   // Every query below is scoped to this user, so resolve them first. The proxy
   // guarantees a session on /collections; redirect defensively rather than
@@ -27,11 +35,14 @@ export default async function CollectionsPage() {
   const currentUser = await getCurrentUser();
   if (!currentUser) redirect("/sign-in");
 
-  const [collections, sidebarItemTypes, sidebarCollections] = await Promise.all([
-    getAllCollections(currentUser.id),
-    getSidebarItemTypes(currentUser.id),
-    getSidebarCollections(currentUser.id),
-  ]);
+  const [collectionPage, sidebarItemTypes, sidebarCollections] =
+    await Promise.all([
+      getAllCollections(currentUser.id, requestedPage),
+      getSidebarItemTypes(currentUser.id),
+      getSidebarCollections(currentUser.id),
+    ]);
+
+  const { collections, pagination } = collectionPage;
 
   return (
     <SidebarProvider>
@@ -57,7 +68,8 @@ export default async function CollectionsPage() {
               <SectionHeader
                 icon={<FolderOpen className="size-4" />}
                 title="All Collections"
-                count={collections.length}
+                // The total across all pages, not just the cards on this one.
+                count={pagination.totalCount}
               />
               {collections.length > 0 ? (
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -70,6 +82,12 @@ export default async function CollectionsPage() {
                   No collections yet.
                 </p>
               )}
+
+              <Pagination
+                pagination={pagination}
+                basePath="/collections"
+                label="Collections pages"
+              />
             </section>
           </main>
         </div>
