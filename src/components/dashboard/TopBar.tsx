@@ -1,14 +1,13 @@
-import { FolderPlus, Search } from "lucide-react";
+import { Search } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SidebarToggle } from "@/components/dashboard/SidebarToggle";
 import { CreateItemDialog } from "@/components/dashboard/CreateItemDialog";
+import { CreateCollectionDialog } from "@/components/dashboard/CreateCollectionDialog";
 
 /**
  * Dashboard top bar: sidebar toggle, search field, and
- * "New Collection" / "New Item" actions. "New Item" opens the create modal;
- * "New Collection" is display only for now.
+ * "New Collection" / "New Item" actions — each opens its own create modal.
  */
 export function TopBar() {
   return (
@@ -26,10 +25,7 @@ export function TopBar() {
       </div>
 
       <div className="ml-auto flex shrink-0 items-center gap-2">
-        <Button variant="outline">
-          <FolderPlus className="size-4" />
-          New Collection
-        </Button>
+        <CreateCollectionDialog />
         <CreateItemDialog />
       </div>
     </header>

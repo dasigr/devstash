@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
+import type { CreateCollectionInput } from "@/lib/validations/collections";
 
 /** Minimal item-type shape a collection card needs to render a badge. */
 export interface CollectionTypeSummary {
@@ -172,4 +173,25 @@ export async function getSidebarCollections(
       color: primary?.typeColor ?? null,
     };
   });
+}
+
+/**
+ * Create a collection owned by the given user. The owner comes from the caller's
+ * session, never from the payload. A brand-new collection holds no items, so its
+ * item count is 0 and it has no item types — no tally query needed.
+ */
+export async function createCollection(
+  userId: string,
+  data: CreateCollectionInput,
+): Promise<DashboardCollection> {
+  const created = await prisma.collection.create({
+    data: {
+      name: data.name,
+      description: data.description ?? null,
+      user: { connect: { id: userId } },
+    },
+    select: { id: true, name: true, description: true, isFavorite: true },
+  });
+
+  return { ...created, itemCount: 0, itemTypes: [] };
 }
