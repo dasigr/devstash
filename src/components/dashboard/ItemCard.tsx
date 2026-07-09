@@ -1,11 +1,13 @@
 import { Clock, Pin, Star } from "lucide-react";
 
 import type { DashboardItem } from "@/lib/db/items";
+import { CopyButton } from "@/components/dashboard/CopyButton";
 import { ItemTypeBadge } from "@/components/dashboard/ItemTypeBadge";
 
 /**
  * An item card for the Pinned and Recent sections. The left border is colored
- * to reflect the item's type; a pin (or favorite star) shows in the corner.
+ * to reflect the item's type; a pin (or favorite star) shows in the corner,
+ * alongside a quick-copy control for the item's content.
  */
 export function ItemCard({ item }: { item: DashboardItem }) {
   const type = item.itemType;
@@ -22,11 +24,16 @@ export function ItemCard({ item }: { item: DashboardItem }) {
           <h3 className="truncate font-medium text-foreground">{item.title}</h3>
           <p className="text-xs text-muted-foreground">{type.name}</p>
         </div>
-        {item.isPinned ? (
-          <Pin className="size-4 shrink-0 rotate-45 text-muted-foreground" />
-        ) : item.isFavorite ? (
-          <Star className="size-4 shrink-0 fill-amber-400 text-amber-400" />
-        ) : null}
+        <div className="flex shrink-0 items-center gap-1.5">
+          {item.isPinned ? (
+            <Pin className="size-4 rotate-45 text-muted-foreground" />
+          ) : item.isFavorite ? (
+            <Star className="size-4 fill-amber-400 text-amber-400" />
+          ) : null}
+          {item.preview && (
+            <CopyButton value={item.preview} label={`Copy ${item.title}`} />
+          )}
+        </div>
       </div>
 
       <div className="mt-3 line-clamp-2 rounded-md bg-muted/50 p-3 font-mono text-xs text-muted-foreground">
