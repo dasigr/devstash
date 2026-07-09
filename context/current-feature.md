@@ -1,16 +1,26 @@
-# Current Feature
+# Current Feature: File List View
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+- Update `/items/files` to render a single-column list (Google Drive/Dropbox style) instead of the grid of item cards.
+- Each row shows: file icon (by extension), file name, file size, upload date, and a download button.
+- Row hover highlight.
+- Clicking a row opens the existing `ItemDrawer`.
+- The download button triggers a direct download and does not open the drawer (stop propagation).
+- Responsive: file info stacks vertically on mobile.
 
 ## Notes
 
-<!-- Additional context, constraints, or details from spec -->
+- Only the `files` slug changes — every other item type keeps its current grid (`ItemCardButton`), and `images` keeps its gallery (`ImageCardButton`). Mirror the existing `isImageGallery` branch in `src/app/items/[type]/page.tsx` with an `isFileList` branch.
+- Reuse the existing drawer flow (`openItem(item.id)` via `item-drawer-context.tsx`) — no navigation, no drawer/detail changes.
+- Download should reuse the same-origin proxy route `/api/items/[id]/download` (already built for File & Image Upload); the file-list download button behaves like `DownloadFileButton` but must `stopPropagation` so the row click doesn't fire.
+- File icon "by extension" — derive from `fileName`; a helper like `fileExtension` already exists in `src/lib/validations/upload.ts`. Keep any new pure logic testable (`src/lib/*`).
+- `DashboardItem` already carries `fileUrl`, `fileName`, `fileSize` (fileName/fileSize via the drawer detail; confirm they're on the list shape — may need to add `fileName`/`fileSize` to `itemSelect`/`toDashboardItem` like `fileUrl` was for the gallery).
+- File items use `updatedAt`/relative time already; "upload date" can reuse the item's timestamp.
 
 ## History
 

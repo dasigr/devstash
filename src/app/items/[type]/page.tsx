@@ -8,6 +8,7 @@ import { TopBar } from "@/components/dashboard/TopBar";
 import { SectionHeader } from "@/components/dashboard/SectionHeader";
 import { ItemCardButton } from "@/components/dashboard/ItemCardButton";
 import { ImageCardButton } from "@/components/dashboard/ImageCardButton";
+import { FileListRow } from "@/components/dashboard/FileListRow";
 import { ItemDrawerProvider } from "@/components/dashboard/ItemDrawer";
 import { ItemTypeIcon } from "@/components/dashboard/ItemTypeIcon";
 import { getItemsByType, getSidebarItemTypes } from "@/lib/db/items";
@@ -45,8 +46,10 @@ export default async function ItemsByTypePage({
   // Unknown type slug — render a 404.
   if (!listing) notFound();
 
-  // The images type renders a thumbnail gallery instead of standard item cards.
+  // The images type renders a thumbnail gallery, and the files type a
+  // single-column list; every other type uses the standard item-card grid.
   const isImageGallery = listing.type.slug === "images";
+  const isFileList = listing.type.slug === "files";
 
   const sidebarUser = currentUser ?? {
     name: null,
@@ -95,6 +98,12 @@ export default async function ItemsByTypePage({
                   <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
                     {listing.items.map((item) => (
                       <ImageCardButton key={item.id} item={item} />
+                    ))}
+                  </div>
+                ) : isFileList ? (
+                  <div className="flex flex-col gap-1">
+                    {listing.items.map((item) => (
+                      <FileListRow key={item.id} item={item} />
                     ))}
                   </div>
                 ) : (
