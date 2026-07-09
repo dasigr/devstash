@@ -182,12 +182,13 @@ erDiagram
 // schema.prisma
 
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
 }
 
+// Datasource url lives in prisma.config.ts (Prisma 7 moves it out of the schema).
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 enum ContentType {
@@ -205,6 +206,7 @@ model User {
   email                String?    @unique
   emailVerified        DateTime?
   image                String?
+  password             String?    // bcrypt hash; null for OAuth-only accounts
 
   // Billing
   isPro                Boolean    @default(false)
