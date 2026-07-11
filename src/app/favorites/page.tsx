@@ -78,25 +78,6 @@ export default async function FavoritesPage() {
                   <>
                     <section>
                       <SectionHeader
-                        icon={<FileText className="size-4" />}
-                        title="Items"
-                        count={items.length}
-                      />
-                      {items.length > 0 ? (
-                        <div className="flex flex-col">
-                          {items.map((item) => (
-                            <FavoriteItemRow key={item.id} item={item} />
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="px-2 py-1.5 text-sm text-muted-foreground">
-                          No favorite items.
-                        </p>
-                      )}
-                    </section>
-
-                    <section>
-                      <SectionHeader
                         icon={<FolderOpen className="size-4" />}
                         title="Collections"
                         count={collections.length}
@@ -113,6 +94,25 @@ export default async function FavoritesPage() {
                       ) : (
                         <p className="px-2 py-1.5 text-sm text-muted-foreground">
                           No favorite collections.
+                        </p>
+                      )}
+                    </section>
+
+                    <section>
+                      <SectionHeader
+                        icon={<FileText className="size-4" />}
+                        title="Items"
+                        count={items.length}
+                      />
+                      {items.length > 0 ? (
+                        <div className="flex flex-col">
+                          {items.map((item) => (
+                            <FavoriteItemRow key={item.id} item={item} />
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="px-2 py-1.5 text-sm text-muted-foreground">
+                          No favorite items.
                         </p>
                       )}
                     </section>
