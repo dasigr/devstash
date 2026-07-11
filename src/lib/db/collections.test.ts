@@ -56,6 +56,7 @@ import {
   getCollectionDetail,
   getCollectionOptions,
   getCollectionStats,
+  getFavoriteCollections,
   getRecentCollections,
   getSidebarCollections,
 } from "@/lib/db/collections";
@@ -177,6 +178,43 @@ describe("owner-scoped collection queries", () => {
 
     expect(await getRecentCollections("user_1")).toEqual([]);
     expect(queryRaw).not.toHaveBeenCalled();
+  });
+
+  it("getFavoriteCollections scopes to the owner alongside isFavorite, newest first", async () => {
+    findMany.mockResolvedValue([
+      { id: "col_1", name: "React Patterns", updatedAt: new Date() },
+    ]);
+
+    await getFavoriteCollections("user_1");
+
+    const args = findMany.mock.calls[0][0];
+    expect(args.where).toEqual({ userId: "user_1", isFavorite: true });
+    expect(args.orderBy).toEqual({ updatedAt: "desc" });
+  });
+
+  it("getFavoriteCollections colors a collection by its most-used type and counts items, null when empty", async () => {
+    findMany.mockResolvedValue([
+      { id: "col_1", name: "DevOps", updatedAt: new Date() },
+      { id: "col_2", name: "Empty", updatedAt: new Date() },
+    ]);
+    // Rows arrive most-used first from the ORDER BY in the raw query.
+    queryRaw.mockResolvedValue([
+      { collectionId: "col_1", typeId: "t_link", typeName: "link", typeColor: "#10b981", typeIcon: "Link", count: 2 },
+      { collectionId: "col_1", typeId: "t_cmd", typeName: "command", typeColor: "#f97316", typeIcon: "Terminal", count: 1 },
+    ]);
+
+    const favorites = await getFavoriteCollections("user_1");
+
+    expect(favorites[0]).toMatchObject({
+      id: "col_1",
+      color: "#10b981",
+      itemCount: 3,
+    });
+    expect(favorites[1]).toMatchObject({
+      id: "col_2",
+      color: null,
+      itemCount: 0,
+    });
   });
 
   it("getAllCollections scopes to the owner, favorites first, one page at a time", async () => {

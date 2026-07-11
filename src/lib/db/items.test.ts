@@ -42,6 +42,7 @@ vi.mock("@/lib/r2", () => ({ deleteFromR2, r2KeyFromUrl }));
 import {
   createItem,
   deleteItem,
+  getFavoriteItems,
   getItemDetail,
   getItemFile,
   getItemStats,
@@ -623,6 +624,25 @@ describe("owner-scoped read queries", () => {
     findMany.mockResolvedValue([]);
     await getRecentItems("user_1");
     expect(findMany.mock.calls[0][0].take).toBe(DASHBOARD_RECENT_ITEMS_LIMIT);
+  });
+
+  it("getFavoriteItems scopes to the owner alongside isFavorite, newest first", async () => {
+    findMany.mockResolvedValue([rawListItem({ isFavorite: true })]);
+
+    const favorites = await getFavoriteItems("user_1");
+
+    expect(findMany.mock.calls[0][0].where).toEqual({
+      userId: "user_1",
+      isFavorite: true,
+    });
+    expect(findMany.mock.calls[0][0].orderBy).toEqual({ updatedAt: "desc" });
+    // Mapped through the shared card mapper (preview derived, tags flattened).
+    expect(favorites[0]).toMatchObject({
+      id: "item_1",
+      preview: "export function useDebounce() {}",
+      tags: ["react"],
+      itemType: { name: "snippet", color: "#3b82f6" },
+    });
   });
 
   it("getItemStats counts only the owner's items, total and favorites", async () => {

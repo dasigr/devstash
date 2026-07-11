@@ -1,3 +1,7 @@
+import Link from "next/link";
+import { Star } from "lucide-react";
+
+import { buttonVariants } from "@/components/ui/button";
 import { SidebarToggle } from "@/components/dashboard/SidebarToggle";
 import { SearchPalette } from "@/components/dashboard/SearchPalette";
 import { CreateItemDialog } from "@/components/dashboard/CreateItemDialog";
@@ -20,6 +24,13 @@ export function TopBar() {
       </div>
 
       <div className="ml-auto flex shrink-0 items-center gap-2">
+        <Link
+          href="/favorites"
+          aria-label="Favorites"
+          className={buttonVariants({ variant: "ghost", size: "icon" })}
+        >
+          <Star className="size-4" />
+        </Link>
         <CreateCollectionDialog />
         <CreateItemDialog />
       </div>
