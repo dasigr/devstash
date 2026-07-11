@@ -2,7 +2,7 @@ import { cache } from "react";
 
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
-import { itemSelect, toDashboardItem } from "@/lib/db/items";
+import { itemSelect, relativeTime, toDashboardItem } from "@/lib/db/items";
 import type { DashboardItem } from "@/lib/db/items";
 import {
   COLLECTIONS_PER_PAGE,
@@ -209,6 +209,48 @@ export async function getCollectionStats(userId: string): Promise<{
     prisma.collection.count({ where: { userId, isFavorite: true } }),
   ]);
   return { total, favorites };
+}
+
+/** A favorited collection prepared for the compact /favorites list. */
+export interface FavoriteCollection {
+  id: string;
+  name: string;
+  /** Human-friendly relative time, derived from updatedAt. */
+  updatedAt: string;
+  /** Color of the most-used item type; null when the collection is empty. */
+  color: string | null;
+  itemCount: number;
+}
+
+/**
+ * The given user's favorited collections for the /favorites list, most recently
+ * updated first. Each carries its item count and the color of its most-used item
+ * type (null when empty) so the row can tint its icon and badge.
+ */
+export async function getFavoriteCollections(
+  userId: string,
+): Promise<FavoriteCollection[]> {
+  const collections = await prisma.collection.findMany({
+    where: { userId, isFavorite: true },
+    orderBy: { updatedAt: "desc" },
+    select: { id: true, name: true, updatedAt: true },
+  });
+
+  const typeCounts = await getTypeCountsByCollection(
+    collections.map((c) => c.id),
+  );
+
+  return collections.map((collection) => {
+    const rows = typeCounts.get(collection.id) ?? [];
+    return {
+      id: collection.id,
+      name: collection.name,
+      updatedAt: relativeTime(collection.updatedAt),
+      // Grouped rows come most-used first, so the first row is the primary type.
+      color: rows[0]?.typeColor ?? null,
+      itemCount: rows.reduce((sum, row) => sum + row.count, 0),
+    };
+  });
 }
 
 /** A collection prepared for the sidebar list. */

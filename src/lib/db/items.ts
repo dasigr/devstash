@@ -99,7 +99,7 @@ export function itemPreview(item: PreviewSource): string {
 }
 
 /** Format a timestamp as a short relative time, matching the card style. */
-function relativeTime(date: Date): string {
+export function relativeTime(date: Date): string {
   const seconds = Math.round((Date.now() - date.getTime()) / 1000);
   const minutes = Math.round(seconds / 60);
   const hours = Math.round(minutes / 60);
@@ -151,6 +151,18 @@ export async function getRecentItems(
     where: { userId },
     orderBy: { updatedAt: "desc" },
     take: limit,
+    select: itemSelect,
+  });
+  return items.map(toDashboardItem);
+}
+
+/** The given user's favorited items, most recently updated first. */
+export async function getFavoriteItems(
+  userId: string,
+): Promise<DashboardItem[]> {
+  const items = await prisma.item.findMany({
+    where: { userId, isFavorite: true },
+    orderBy: { updatedAt: "desc" },
     select: itemSelect,
   });
   return items.map(toDashboardItem);

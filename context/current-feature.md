@@ -1,16 +1,29 @@
-# Current Feature
+# Current Feature: Favorites Page
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+- Add a `/favorites` page (protected route) displaying all favorited items and collections.
+- Add a star icon button to the `TopBar` linking to `/favorites`.
+- Fetch all of the signed-in user's favorited items and collections (owner-scoped).
+- Render a compact, dev-focused **list** view (VS Code / terminal style), not cards.
+- Each row shows: type icon, title, type badge, and date added.
+- Separate sections for **Items** and **Collections**, each with a count.
+- Clicking an item opens the existing `ItemDrawer`; clicking a collection navigates to `/collections/[id]`.
+- Show an empty state when there are no favorites.
+- Sort each section by most recently favorited (`updatedAt`, desc).
 
 ## Notes
 
-<!-- Additional context, constraints, or details from spec -->
+- **UI style:** monospace or semi-monospace font, minimal padding / high density, subtle hover states, no cards or heavy borders — clean lines only.
+- Spec: `context/features/favorites-spec.md`.
+- Favorites are driven by the existing `Item.isFavorite` and `Collection.isFavorite` boolean columns (no schema change expected).
+- **Decision:** do **not** implement the favorite-toggle in this feature. The favorite/star buttons in the item drawer and collection actions stay display-only/disabled (per prior History entries). This page only *lists* whatever is already flagged `isFavorite` (the seed marks some items/collections favorite).
+- **Decision:** sort both the Items and Collections sections by `updatedAt` (desc). There is no dedicated "favorited-at" timestamp, and the "date added" shown per row is the record's `updatedAt`.
+- Follow the established shell pattern (`SidebarProvider` + `Sidebar` + `TopBar`, `await connection()`, `getCurrentUser()` first with a defensive `redirect("/sign-in")`), add `/favorites/:path*` to the proxy matcher, and wrap in `ItemDrawerProvider` so rows can open the drawer in place.
 
 ## History
 
