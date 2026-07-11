@@ -274,3 +274,95 @@
 .markdown-preview input[type="checkbox"] {
   margin-right: 0.4em;
 }
+
+/* ============================================================
+   Marketing homepage (`/`)
+   Its own dark surface + accent palette, distinct from the app's
+   oklch theme tokens. Defined once here and referenced via
+   `var(--m-*)` from the marketing components' Tailwind classes.
+   ============================================================ */
+.marketing {
+  --m-snippet: #3b82f6;
+  --m-prompt: #f59e0b;
+  --m-command: #06b6d4;
+  --m-note: #22c55e;
+  --m-file: #64748b;
+  --m-image: #ec4899;
+  --m-url: #6366f1;
+
+  --m-bg: #0a0a0f;
+  --m-bg-soft: #101019;
+  --m-surface: #14141d;
+  --m-surface-2: #1a1a26;
+  --m-border: rgba(255, 255, 255, 0.08);
+  --m-border-2: rgba(255, 255, 255, 0.14);
+
+  --m-text: #e9e9f0;
+  --m-text-dim: #a2a2b5;
+  --m-text-mute: #6f6f83;
+
+  --m-brand: #6366f1;
+  --m-brand-2: #8b5cf6;
+  --m-brand-glow: rgba(99, 102, 241, 0.45);
+
+  background: var(--m-bg);
+  color: var(--m-text);
+}
+
+/* Pulsing "chaos → order" arrow. On mobile the showcase stacks and the
+   arrow rotates 90° to point down, so the keyframes carry the rotation. */
+@keyframes m-arrow-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 var(--m-brand-glow);
+  }
+  50% {
+    transform: scale(1.08);
+    box-shadow: 0 0 0 14px rgba(99, 102, 241, 0);
+  }
+}
+@keyframes m-arrow-pulse-vertical {
+  0%,
+  100% {
+    transform: rotate(90deg) scale(1);
+    box-shadow: 0 0 0 0 var(--m-brand-glow);
+  }
+  50% {
+    transform: rotate(90deg) scale(1.08);
+    box-shadow: 0 0 0 14px rgba(99, 102, 241, 0);
+  }
+}
+.m-arrow {
+  animation: m-arrow-pulse 2s ease-in-out infinite;
+}
+@media (max-width: 900px) {
+  .m-arrow {
+    animation-name: m-arrow-pulse-vertical;
+    transform: rotate(90deg);
+  }
+}
+
+/* Staggered fade-in for the AI "Generated Tags" demo. */
+@keyframes m-tag-in {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.m-tag {
+  opacity: 0;
+  transform: translateY(4px);
+  animation: m-tag-in 0.4s ease forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .m-arrow {
+    animation: none;
+  }
+  .m-tag {
+    opacity: 1;
+    transform: none;
+    animation: none;
+  }
+}

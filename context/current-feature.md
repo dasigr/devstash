@@ -1,16 +1,32 @@
-# Current Feature
+# Current Feature: Homepage (Marketing Landing Page)
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+- Turn the static prototype in `prototypes/homepage/` into the real app homepage at the root route `/` (replacing the placeholder `<h1>DevStash</h1>`), rebuilt as React server/client components with Tailwind + existing ShadCN primitives — reproduce the prototype's look and behavior, don't copy its raw HTML/CSS/JS.
+- `src/app/page.tsx` is a **server component** rendered **outside** the dashboard shell (no `Sidebar`/`TopBar`); public (not in `proxy.ts` matcher); if `auth()` finds a session, **redirect to `/dashboard`**; set page `metadata` (title + description) from the prototype `<head>`.
+- Build the sections in order: Nav → Hero (chaos / arrow / dashboard preview) → Features (6 cards) → AI/Pro → Pricing (Free + Pro) → CTA band → Footer, under `src/components/marketing/`.
+- Server-first components; only `MarketingNav`, `ChaosField`, `Pricing`, and `Reveal` are `"use client"` (see spec table).
+- Keep it DRY: one shared `Reveal` wrapper, one shared feature-card and price-card component driven by `FEATURES` / `PRICING_PLANS` data arrays.
+- Wire every link/button to real destinations via `next/link` (see Links table); in-page anchors keep smooth-scroll to section ids.
+- Use the prototype's **own marketing accent palette** (differs from the app's item-type colors) — define once as CSS custom properties / shared constants, don't hardcode hexes per card. Reuse ShadCN `Button` (via `asChild` + `Link`) and the existing `Logo`.
+- Port `script.js` interactivity: `ChaosField` rAF physics (8 inline-SVG icons drift/bounce/pulse/cursor-repel, resize handling, rAF cleanup), nav scroll-background + hamburger, pricing monthly/yearly toggle, `Reveal` IntersectionObserver, and a `prefers-reduced-motion` path.
+- Responsive: chaos/arrow/dashboard stack vertically on mobile (arrow rotates 90°), grids collapse, nav swaps to hamburger.
+- **No unit tests** (components/page only — outside Vitest scope); existing suite must still pass. Verify in browser (links, animations, reduced-motion, mobile, signed-in redirect), run `npm run lint` and `npm run build`.
 
 ## Notes
 
-<!-- Additional context, constraints, or details from spec -->
+- Spec: `context/features/homepage-spec.md`.
+- Component architecture (kind per spec): `page.tsx` server; `MarketingNav` client; `Hero` server; `ChaosField` client; `DashboardPreview` server; `FeatureGrid` server; `AiSection` server; `Pricing` client; `Reveal` client; `Footer` server.
+- Marketing accent palette: Snippet `#3b82f6`, Prompt `#f59e0b`, Command `#06b6d4`, Note `#22c55e`, File `#64748b`, Image `#ec4899`, URL `#6366f1`. These **differ** from the live app's item-type colors — follow the prototype's palette for this page only.
+- Links: brand→`/`, Sign In→`/sign-in`, Get Started/all CTAs (Start stashing / Get Started / Go Pro)→`/register`, Features→`#features`, Pricing→`#pricing`, "See how it works"→`#features`, "Unlock AI features"→`#pricing`; footer Changelog/About/Blog/Careers/Docs/Support/Community→`#` placeholders.
+- ChaosField icons are **inline SVGs** (Notion/GitHub/Slack/VS Code + terminal/tabs/file/bookmark) — lucide dropped brand icons.
+- Pricing: Pro is $8/mo ↔ $6/mo ("$72 billed yearly"); toggle updates `aria-pressed`. Free is $0 / 50 items / 3 collections.
+- **Out of scope:** real billing/Stripe wiring, the placeholder footer pages, and any changes to the dashboard or auth flows.
+- The prototype was built in the prior "Homepage Marketing Mockup" feature (see History) and was **never visually verified in a browser** — treat its behavior as the intended target but sanity-check it during this build.
 
 ## History
 
