@@ -1,13 +1,14 @@
-import { Clock, Pin, Star } from "lucide-react";
+import { Clock, Pin } from "lucide-react";
 
 import type { DashboardItem } from "@/lib/db/items";
 import { CopyButton } from "@/components/dashboard/CopyButton";
+import { ItemFavoriteButton } from "@/components/dashboard/ItemFavoriteButton";
 import { ItemTypeBadge } from "@/components/dashboard/ItemTypeBadge";
 
 /**
  * An item card for the Pinned and Recent sections. The left border is colored
- * to reflect the item's type; a pin (or favorite star) shows in the corner,
- * alongside a quick-copy control for the item's content.
+ * to reflect the item's type; a pin indicator (when pinned), an interactive
+ * favorite star, and a quick-copy control sit in the corner.
  */
 export function ItemCard({ item }: { item: DashboardItem }) {
   const type = item.itemType;
@@ -25,11 +26,15 @@ export function ItemCard({ item }: { item: DashboardItem }) {
           <p className="text-xs text-muted-foreground">{type.name}</p>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
-          {item.isPinned ? (
+          {item.isPinned && (
             <Pin className="size-4 rotate-45 text-muted-foreground" />
-          ) : item.isFavorite ? (
-            <Star className="size-4 fill-amber-400 text-amber-400" />
-          ) : null}
+          )}
+          <ItemFavoriteButton
+            itemId={item.id}
+            isFavorite={item.isFavorite}
+            size="icon-xs"
+            stopPropagation
+          />
           {item.preview && (
             <CopyButton value={item.preview} label={`Copy ${item.title}`} />
           )}

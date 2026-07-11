@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { connection } from "next/server";
-import { FolderOpen, Star } from "lucide-react";
+import { FolderOpen } from "lucide-react";
 
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { SidebarProvider } from "@/components/dashboard/sidebar-context";
@@ -99,9 +99,6 @@ export default async function CollectionDetailPage({
                       style={primaryColor ? { color: primaryColor } : undefined}
                     />
                     {collection.name}
-                    {collection.isFavorite && (
-                      <Star className="size-5 shrink-0 fill-amber-400 text-amber-400" />
-                    )}
                   </h1>
                   {collection.description && (
                     <p className="mt-1 text-sm text-muted-foreground">
@@ -115,6 +112,7 @@ export default async function CollectionDetailPage({
                     name: collection.name,
                     description: collection.description,
                   }}
+                  isFavorite={collection.isFavorite}
                 />
               </div>
 

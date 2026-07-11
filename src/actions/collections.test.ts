@@ -2,23 +2,31 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock the session and the query layer so the action's own logic (auth guard,
 // validation, error mapping) is exercised without a database.
-const { auth, createCollectionQuery, updateCollectionQuery, deleteCollectionQuery } =
-  vi.hoisted(() => ({
-    auth: vi.fn(),
-    createCollectionQuery: vi.fn(),
-    updateCollectionQuery: vi.fn(),
-    deleteCollectionQuery: vi.fn(),
-  }));
+const {
+  auth,
+  createCollectionQuery,
+  updateCollectionQuery,
+  deleteCollectionQuery,
+  setCollectionFavoriteQuery,
+} = vi.hoisted(() => ({
+  auth: vi.fn(),
+  createCollectionQuery: vi.fn(),
+  updateCollectionQuery: vi.fn(),
+  deleteCollectionQuery: vi.fn(),
+  setCollectionFavoriteQuery: vi.fn(),
+}));
 vi.mock("@/auth", () => ({ auth }));
 vi.mock("@/lib/db/collections", () => ({
   createCollection: createCollectionQuery,
   updateCollection: updateCollectionQuery,
   deleteCollection: deleteCollectionQuery,
+  setCollectionFavorite: setCollectionFavoriteQuery,
 }));
 
 import {
   createCollection,
   deleteCollection,
+  setCollectionFavorite,
   updateCollection,
 } from "@/actions/collections";
 
@@ -225,6 +233,81 @@ describe("deleteCollection action", () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
 
     const result = await deleteCollection("col_1");
+
+    expect(result).toEqual({
+      success: false,
+      error: "Something went wrong. Please try again.",
+    });
+  });
+});
+
+describe("setCollectionFavorite action", () => {
+  beforeEach(() => {
+    auth.mockReset();
+    setCollectionFavoriteQuery.mockReset();
+  });
+
+  it("rejects an unauthenticated caller without touching the DB", async () => {
+    auth.mockResolvedValue(null);
+
+    const result = await setCollectionFavorite("col_1", true);
+
+    expect(result).toEqual({ success: false, error: "You must be signed in." });
+    expect(setCollectionFavoriteQuery).not.toHaveBeenCalled();
+  });
+
+  it("rejects a non-boolean flag without touching the DB", async () => {
+    auth.mockResolvedValue({ user: { id: "user_1" } });
+
+    const result = await setCollectionFavorite(
+      "col_1",
+      "yes" as unknown as boolean,
+    );
+
+    expect(result).toEqual({ success: false, error: "Invalid request." });
+    expect(setCollectionFavoriteQuery).not.toHaveBeenCalled();
+  });
+
+  it("passes the id, the session's user id, and the flag to the query", async () => {
+    auth.mockResolvedValue({ user: { id: "user_1" } });
+    setCollectionFavoriteQuery.mockResolvedValue(true);
+
+    await setCollectionFavorite("col_1", true);
+
+    expect(setCollectionFavoriteQuery).toHaveBeenCalledWith(
+      "col_1",
+      "user_1",
+      true,
+    );
+  });
+
+  it("reports a foreign or unknown collection as not found", async () => {
+    auth.mockResolvedValue({ user: { id: "user_1" } });
+    setCollectionFavoriteQuery.mockResolvedValue(false);
+
+    const result = await setCollectionFavorite("col_other", true);
+
+    expect(result).toEqual({ success: false, error: "Collection not found." });
+  });
+
+  it("returns the id and new flag on success", async () => {
+    auth.mockResolvedValue({ user: { id: "user_1" } });
+    setCollectionFavoriteQuery.mockResolvedValue(true);
+
+    const result = await setCollectionFavorite("col_1", false);
+
+    expect(result).toEqual({
+      success: true,
+      data: { id: "col_1", isFavorite: false },
+    });
+  });
+
+  it("maps a thrown query error to a generic message", async () => {
+    auth.mockResolvedValue({ user: { id: "user_1" } });
+    setCollectionFavoriteQuery.mockRejectedValue(new Error("db down"));
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const result = await setCollectionFavorite("col_1", true);
 
     expect(result).toEqual({
       success: false,

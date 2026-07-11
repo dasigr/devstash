@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { MoreHorizontal, Pencil, Star, Trash2 } from "lucide-react";
 
+import { setCollectionFavorite } from "@/actions/collections";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -14,6 +16,7 @@ import {
 import { DeleteCollectionDialog } from "@/components/dashboard/DeleteCollectionDialog";
 import { EditCollectionDialog } from "@/components/dashboard/EditCollectionDialog";
 import type { EditableCollection } from "@/components/dashboard/EditCollectionDialog";
+import { useFavoriteToggle } from "@/components/dashboard/useFavoriteToggle";
 
 /**
  * The three-dots menu on a collection card: Edit, Favorite, Delete.
@@ -23,18 +26,28 @@ import type { EditableCollection } from "@/components/dashboard/EditCollectionDi
  * link and never navigates.
  *
  * Both dialogs render as siblings of the menu, not inside it — a Base UI menu
- * unmounts its content on close, which would take a nested dialog with it.
- *
- * Favorite is not wired up yet, so it renders disabled rather than silently
- * doing nothing.
+ * unmounts its content on close, which would take a nested dialog with it. The
+ * favorite toggle lives on the menu component (not its content) so its
+ * optimistic state survives the content unmounting on close.
  */
 export function CollectionCardMenu({
   collection,
+  isFavorite,
 }: {
   collection: EditableCollection;
+  isFavorite: boolean;
 }) {
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const {
+    isFavorite: favorited,
+    pending: favoritePending,
+    onToggle: onToggleFavorite,
+  } = useFavoriteToggle({
+    initial: isFavorite,
+    toggle: (next) => setCollectionFavorite(collection.id, next),
+    noun: "collection",
+  });
 
   return (
     <div className="relative z-10 shrink-0">
@@ -57,9 +70,14 @@ export function CollectionCardMenu({
             <Pencil />
             Edit
           </DropdownMenuItem>
-          <DropdownMenuItem disabled>
-            <Star />
-            Favorite
+          <DropdownMenuItem
+            disabled={favoritePending}
+            onClick={() => void onToggleFavorite()}
+          >
+            <Star
+              className={cn(favorited && "fill-amber-400 text-amber-400")}
+            />
+            {favorited ? "Unfavorite" : "Favorite"}
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem

@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const {
   findFirst,
   update,
+  updateMany,
   deleteMany,
   create,
   findMany,
@@ -15,6 +16,7 @@ const {
 } = vi.hoisted(() => ({
   findFirst: vi.fn(),
   update: vi.fn(),
+  updateMany: vi.fn(),
   deleteMany: vi.fn(),
   create: vi.fn(),
   findMany: vi.fn(),
@@ -25,7 +27,7 @@ const {
 }));
 vi.mock("@/lib/prisma", () => ({
   prisma: {
-    item: { findFirst, update, deleteMany, create, findMany, count },
+    item: { findFirst, update, updateMany, deleteMany, create, findMany, count },
     itemType: { findFirst: typeFindFirst, findMany: typeFindMany },
     collection: { findMany: collectionFindMany },
   },
@@ -42,6 +44,7 @@ vi.mock("@/lib/r2", () => ({ deleteFromR2, r2KeyFromUrl }));
 import {
   createItem,
   deleteItem,
+  setItemFavorite,
   getFavoriteItems,
   getItemDetail,
   getItemFile,
@@ -528,6 +531,35 @@ describe("deleteItem", () => {
     deleteFromR2.mockRejectedValue(new Error("R2 down"));
 
     expect(await deleteItem("item_1", "user_1")).toBe(true);
+  });
+});
+
+describe("setItemFavorite", () => {
+  beforeEach(() => {
+    updateMany.mockReset();
+  });
+
+  it("scopes the update to the item id and owner (IDOR guard)", async () => {
+    updateMany.mockResolvedValue({ count: 1 });
+
+    await setItemFavorite("item_1", "user_1", true);
+
+    expect(updateMany.mock.calls[0][0]).toEqual({
+      where: { id: "item_1", userId: "user_1" },
+      data: { isFavorite: true },
+    });
+  });
+
+  it("returns true when a row was updated", async () => {
+    updateMany.mockResolvedValue({ count: 1 });
+
+    expect(await setItemFavorite("item_1", "user_1", false)).toBe(true);
+  });
+
+  it("returns false for a missing or foreign item", async () => {
+    updateMany.mockResolvedValue({ count: 0 });
+
+    expect(await setItemFavorite("nope", "user_1", true)).toBe(false);
   });
 });
 

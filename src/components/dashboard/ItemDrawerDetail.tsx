@@ -9,7 +9,6 @@ import {
   File as FileIcon,
   Pencil,
   Pin,
-  Star,
   X,
 } from "lucide-react";
 
@@ -21,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { SheetClose, SheetTitle } from "@/components/ui/sheet";
 import { ItemTypeBadge } from "@/components/dashboard/ItemTypeBadge";
 import { DeleteItemButton } from "@/components/dashboard/DeleteItemButton";
+import { ItemFavoriteButton } from "@/components/dashboard/ItemFavoriteButton";
 import { DownloadFileButton } from "@/components/dashboard/DownloadFileButton";
 import { CodeEditor } from "@/components/dashboard/CodeEditor";
 import { MarkdownEditor } from "@/components/dashboard/MarkdownEditor";
@@ -100,19 +100,11 @@ export function ItemDrawerDetail({
               )}
             />
           </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            type="button"
-            aria-label={item.isFavorite ? "Unfavorite item" : "Favorite item"}
-            aria-pressed={item.isFavorite}
-          >
-            <Star
-              className={cn(
-                item.isFavorite && "fill-amber-400 text-amber-400",
-              )}
-            />
-          </Button>
+          <ItemFavoriteButton
+            key={item.id}
+            itemId={item.id}
+            isFavorite={item.isFavorite}
+          />
           <Button
             variant="ghost"
             size="icon"

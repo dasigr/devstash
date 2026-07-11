@@ -1,16 +1,25 @@
-# Current Feature
+# Current Feature: Favorite Toggle (Items & Collections)
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+- Make the existing **display-only** favorite (star) controls actually toggle `isFavorite` and persist to the DB.
+- **Items:** toggle from the item drawer (`ItemDrawerDetail`) and from the item card (`ItemCard` on the dashboard Pinned/Recent grids and `/items/[type]` listing).
+- **Collections:** toggle from the collection detail actions (`CollectionDetailActions`), the collection card menu (`CollectionCardMenu`), and — if in scope — the collection drawer/detail. (Collections open a page, not a drawer.)
+- After a toggle, reflect the new state immediately (optimistic UI) and keep the dashboard stats, sidebar, and `/favorites` in sync via `router.refresh()`.
+- Owner-scoped writes (session user, never a client-supplied id), following the existing server-action / `ActionResult<T>` house pattern.
+- Unit tests for the new server actions + DB helpers (Vitest, `src/actions/*` + `src/lib/db/*`).
 
 ## Notes
 
-<!-- Additional context, constraints, or details from spec -->
+- Schema already has `Item.isFavorite` and `Collection.isFavorite` (both `@default(false)`) — **no migration expected**.
+- Current state (from History): the Favorite star in `ItemDrawerDetail` is display-only; `CollectionDetailActions` and `CollectionCardMenu` render Favorite **disabled** with no mutation. The **Favorites Page** feature only *lists* flagged records and explicitly deferred the toggle itself — this is that deferred toggle.
+- Follow the `updateItem`/`deleteItem` and `updateCollection`/`deleteCollection` precedent: owner-scoped `updateMany({ where: { id, userId } })` returning null/false on no match, mapped to "not found."
+- The item card copy/pin patterns show how to nest an interactive control in a card without invalid `button`-in-`button` nesting — reuse that approach for the card star.
+- "Favorite-toggle in the card and in the drawer" — items have a drawer; collections have card + detail page (no drawer). **Decided:** for collections the toggle lives on the **card** (`CollectionCardMenu`) and the **detail page** (`CollectionDetailActions`) only — no collection drawer.
 
 ## History
 
