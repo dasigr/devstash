@@ -1,16 +1,31 @@
-# Current Feature
+# Current Feature: Homepage Marketing Mockup
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+- Build a standalone marketing homepage prototype at `prototypes/homepage/` (`index.html`, `styles.css`, `script.js`) — plain HTML/CSS/JS, **not** integrated into the Next.js app.
+- **Hero (main focus)** — a "chaos to order" visual with three side-by-side elements:
+  - **Chaos container (left)** — "Your knowledge today…" box with 8 floating icons (Notion, GitHub, Slack, VS Code, browser tabs, terminal, text file, bookmark) animated via `requestAnimationFrame`: drift + bounce off walls, subtle rotation/scale pulsing, repel from the mouse cursor.
+  - **Transform arrow (center)** — CSS pulse animation.
+  - **Dashboard preview (right)** — "…with DevStash" box: mini sidebar nav + grid of item cards with colored top borders (item-type colors).
+- **Navigation** — fixed top nav (logo, Features/Pricing links, Sign In / Get Started buttons); grows more opaque on scroll.
+- **Hero text** — "Stop Losing Your Developer Knowledge" headline with gradient text, subheadline, CTA buttons.
+- **Features** — 6-card grid (Code Snippets, AI Prompts, Instant Search, Commands, Files & Docs, Collections), each card using its item-type accent color.
+- **AI section** — two columns: left = "Pro Feature" badge + checklist of AI capabilities; right = code-editor mockup with an "AI Generated Tags" demo.
+- **Pricing** — Free ($0, 50 items, 3 collections) vs Pro ($8/mo, unlimited, AI); Pro highlighted with "Most Popular" badge; monthly/yearly toggle (yearly = $72).
+- **CTA** — "Ready to Organize Your Knowledge?" with button.
+- **Footer** — logo, link columns, copyright with current year.
+- **Animations** — chaos icons (rAF), arrow (CSS pulse), scroll fade-in on view, navbar opacity on scroll.
+- **Responsive** — mobile stacks chaos/arrow/dashboard vertically, single-column grids, arrow rotates 90° to point down.
 
 ## Notes
 
-<!-- Additional context, constraints, or details from spec -->
+- Spec: `context/features/homepage-mockup-spec.md`.
+- **Standalone prototype** — no Next.js/React/Prisma/DB involvement; lives under `prototypes/homepage/`. Outside the app's normal `src/` structure, Vitest scope, and migrations policy.
+- **Color palette** (dark theme, item-type accents): Snippet `#3b82f6` (blue), Prompt `#f59e0b` (amber), Command `#06b6d4` (cyan), Note `#22c55e` (green), File `#64748b` (slate), Image `#ec4899` (pink), URL `#6366f1` (indigo). Note these **differ** from the app's own type colors (e.g. app Prompt is purple, Command orange) — follow the spec palette for this prototype.
 
 ## History
 
