@@ -45,6 +45,7 @@ import {
   createItem,
   deleteItem,
   setItemFavorite,
+  setItemPin,
   getFavoriteItems,
   getItemDetail,
   getItemFile,
@@ -563,6 +564,35 @@ describe("setItemFavorite", () => {
   });
 });
 
+describe("setItemPin", () => {
+  beforeEach(() => {
+    updateMany.mockReset();
+  });
+
+  it("scopes the update to the item id and owner (IDOR guard)", async () => {
+    updateMany.mockResolvedValue({ count: 1 });
+
+    await setItemPin("item_1", "user_1", true);
+
+    expect(updateMany.mock.calls[0][0]).toEqual({
+      where: { id: "item_1", userId: "user_1" },
+      data: { isPinned: true },
+    });
+  });
+
+  it("returns true when a row was updated", async () => {
+    updateMany.mockResolvedValue({ count: 1 });
+
+    expect(await setItemPin("item_1", "user_1", false)).toBe(true);
+  });
+
+  it("returns false for a missing or foreign item", async () => {
+    updateMany.mockResolvedValue({ count: 0 });
+
+    expect(await setItemPin("nope", "user_1", true)).toBe(false);
+  });
+});
+
 describe("getItemFile", () => {
   beforeEach(() => {
     findFirst.mockReset();
@@ -773,7 +803,11 @@ describe("owner-scoped read queries", () => {
     // A 50-item type must not load all 50 rows to render 20.
     expect(args.skip).toBe(ITEMS_PER_PAGE);
     expect(args.take).toBe(ITEMS_PER_PAGE);
-    expect(args.orderBy).toEqual({ updatedAt: "desc" });
+    // Pinned items sort to the top of the listing, then most-recent first.
+    expect(args.orderBy).toEqual([
+      { isPinned: "desc" },
+      { updatedAt: "desc" },
+    ]);
     expect(listing?.pagination).toMatchObject({
       page: 2,
       totalCount: 50,

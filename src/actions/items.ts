@@ -7,6 +7,7 @@ import {
   createItem as createItemQuery,
   deleteItem as deleteItemQuery,
   setItemFavorite as setItemFavoriteQuery,
+  setItemPin as setItemPinQuery,
   updateItem as updateItemQuery,
 } from "@/lib/db/items";
 import type { ItemDetail } from "@/lib/db/items";
@@ -123,6 +124,37 @@ export async function setItemFavorite(
     return { success: true, data: { id: itemId, isFavorite } };
   } catch (error) {
     console.error("Failed to update item favorite:", error);
+    return { success: false, error: "Something went wrong. Please try again." };
+  }
+}
+
+/**
+ * Toggle whether an item the signed-in user owns is pinned. Resolves the
+ * session, then delegates to the owner-scoped query — which updates nothing for a
+ * missing or foreign item, so a user can only pin their own. Returns a not-found
+ * error in that case, or the item's new pinned state on success.
+ */
+export async function setItemPin(
+  itemId: string,
+  isPinned: boolean,
+): Promise<ActionResult<{ id: string; isPinned: boolean }>> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { success: false, error: "You must be signed in." };
+  }
+
+  if (typeof isPinned !== "boolean") {
+    return { success: false, error: "Invalid request." };
+  }
+
+  try {
+    const updated = await setItemPinQuery(itemId, session.user.id, isPinned);
+    if (!updated) {
+      return { success: false, error: "Item not found." };
+    }
+    return { success: true, data: { id: itemId, isPinned } };
+  } catch (error) {
+    console.error("Failed to update item pin:", error);
     return { success: false, error: "Something went wrong. Please try again." };
   }
 }

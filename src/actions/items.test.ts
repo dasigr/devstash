@@ -8,12 +8,14 @@ const {
   updateItemQuery,
   deleteItemQuery,
   setItemFavoriteQuery,
+  setItemPinQuery,
 } = vi.hoisted(() => ({
   auth: vi.fn(),
   createItemQuery: vi.fn(),
   updateItemQuery: vi.fn(),
   deleteItemQuery: vi.fn(),
   setItemFavoriteQuery: vi.fn(),
+  setItemPinQuery: vi.fn(),
 }));
 vi.mock("@/auth", () => ({ auth }));
 vi.mock("@/lib/db/items", () => ({
@@ -21,12 +23,14 @@ vi.mock("@/lib/db/items", () => ({
   updateItem: updateItemQuery,
   deleteItem: deleteItemQuery,
   setItemFavorite: setItemFavoriteQuery,
+  setItemPin: setItemPinQuery,
 }));
 
 import {
   createItem,
   deleteItem,
   setItemFavorite,
+  setItemPin,
   updateItem,
 } from "@/actions/items";
 
@@ -319,6 +323,74 @@ describe("setItemFavorite action", () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
 
     const result = await setItemFavorite("item_1", true);
+
+    expect(result).toEqual({
+      success: false,
+      error: "Something went wrong. Please try again.",
+    });
+  });
+});
+
+describe("setItemPin action", () => {
+  beforeEach(() => {
+    auth.mockReset();
+    setItemPinQuery.mockReset();
+  });
+
+  it("rejects an unauthenticated caller without touching the DB", async () => {
+    auth.mockResolvedValue(null);
+
+    const result = await setItemPin("item_1", true);
+
+    expect(result).toEqual({ success: false, error: "You must be signed in." });
+    expect(setItemPinQuery).not.toHaveBeenCalled();
+  });
+
+  it("rejects a non-boolean flag without touching the DB", async () => {
+    auth.mockResolvedValue({ user: { id: "user_1" } });
+
+    const result = await setItemPin("item_1", "yes" as unknown as boolean);
+
+    expect(result).toEqual({ success: false, error: "Invalid request." });
+    expect(setItemPinQuery).not.toHaveBeenCalled();
+  });
+
+  it("passes the id, owner id, and flag to the query", async () => {
+    auth.mockResolvedValue({ user: { id: "user_1" } });
+    setItemPinQuery.mockResolvedValue(true);
+
+    await setItemPin("item_1", true);
+
+    expect(setItemPinQuery).toHaveBeenCalledWith("item_1", "user_1", true);
+  });
+
+  it("maps a missing/foreign item to a not-found error", async () => {
+    auth.mockResolvedValue({ user: { id: "user_1" } });
+    setItemPinQuery.mockResolvedValue(false);
+
+    const result = await setItemPin("item_1", true);
+
+    expect(result).toEqual({ success: false, error: "Item not found." });
+  });
+
+  it("returns the id and new flag on success", async () => {
+    auth.mockResolvedValue({ user: { id: "user_1" } });
+    setItemPinQuery.mockResolvedValue(true);
+
+    const result = await setItemPin("item_1", false);
+
+    expect(result).toEqual({
+      success: true,
+      data: { id: "item_1", isPinned: false },
+    });
+  });
+
+  it("returns a generic error when the query throws", async () => {
+    auth.mockResolvedValue({ user: { id: "user_1" } });
+    setItemPinQuery.mockRejectedValue(new Error("db down"));
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const result = await setItemPin("item_1", true);
 
     expect(result).toEqual({
       success: false,

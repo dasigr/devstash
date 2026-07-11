@@ -8,12 +8,10 @@ import {
   Copy,
   File as FileIcon,
   Pencil,
-  Pin,
   X,
 } from "lucide-react";
 
 import type { ItemDetail } from "@/lib/db/items";
-import { cn } from "@/lib/utils";
 import { isCodeType, isMarkdownType } from "@/lib/code-types";
 import { formatBytes } from "@/lib/validations/upload";
 import { Button } from "@/components/ui/button";
@@ -21,6 +19,7 @@ import { SheetClose, SheetTitle } from "@/components/ui/sheet";
 import { ItemTypeBadge } from "@/components/dashboard/ItemTypeBadge";
 import { DeleteItemButton } from "@/components/dashboard/DeleteItemButton";
 import { ItemFavoriteButton } from "@/components/dashboard/ItemFavoriteButton";
+import { ItemPinButton } from "@/components/dashboard/ItemPinButton";
 import { DownloadFileButton } from "@/components/dashboard/DownloadFileButton";
 import { CodeEditor } from "@/components/dashboard/CodeEditor";
 import { MarkdownEditor } from "@/components/dashboard/MarkdownEditor";
@@ -50,8 +49,8 @@ function contentLabel(item: ItemDetail): string {
 /**
  * The item drawer's detail view. Edit switches the drawer into edit mode via
  * `onEdit`; Delete confirms then removes the item and closes the drawer via
- * `onDeleted`. Pin and Favorite are display-only for now. Copy works (client
- * clipboard).
+ * `onDeleted`. Pin and Favorite toggle their state via server actions. Copy
+ * works (client clipboard).
  */
 export function ItemDrawerDetail({
   item,
@@ -86,22 +85,13 @@ export function ItemDrawerDetail({
           </span>
         </div>
         <div className="flex shrink-0 items-center gap-0.5">
-          <Button
-            variant="ghost"
-            size="icon"
-            type="button"
-            aria-label={item.isPinned ? "Unpin item" : "Pin item"}
-            aria-pressed={item.isPinned}
-          >
-            <Pin
-              className={cn(
-                "rotate-45",
-                item.isPinned && "text-foreground",
-              )}
-            />
-          </Button>
+          <ItemPinButton
+            key={`pin-${item.id}`}
+            itemId={item.id}
+            isPinned={item.isPinned}
+          />
           <ItemFavoriteButton
-            key={item.id}
+            key={`favorite-${item.id}`}
             itemId={item.id}
             isFavorite={item.isFavorite}
           />
