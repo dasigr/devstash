@@ -70,6 +70,10 @@ model User {
   image         String?
   password      String? // bcrypt hash; null for OAuth-only accounts
 
+  // Editor preferences (font size, tab size, word wrap, minimap, theme).
+  // null ⇒ the app applies DEFAULT_EDITOR_PREFERENCES.
+  editorPreferences Json?
+
   // Billing
   isPro                Boolean @default(false)
   stripeCustomerId     String? @unique

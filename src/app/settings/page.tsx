@@ -8,7 +8,9 @@ import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ChangePasswordForm } from "@/components/settings/ChangePasswordForm";
 import { DeleteAccountDialog } from "@/components/settings/DeleteAccountDialog";
+import { EditorPreferencesForm } from "@/components/settings/EditorPreferencesForm";
 import { getProfile } from "@/lib/db/profile";
+import { getEditorPreferences } from "@/lib/db/editor-preferences";
 
 export const metadata: Metadata = {
   title: "Settings",
@@ -20,6 +22,8 @@ export default async function SettingsPage() {
   const user = await getProfile();
   // The proxy protects this route, but guard defensively.
   if (!user) redirect("/sign-in");
+
+  const editorPreferences = await getEditorPreferences(user.id);
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-4xl flex-col gap-6 px-4 py-10">
@@ -40,6 +44,19 @@ export default async function SettingsPage() {
           Manage your account.
         </p>
       </div>
+
+      {/* Editor preferences */}
+      <section className="rounded-xl border border-border bg-card p-6">
+        <h2 className="text-base font-semibold text-foreground">
+          Editor preferences
+        </h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Customize the code editor. Changes save automatically.
+        </p>
+        <div className="mt-4">
+          <EditorPreferencesForm initial={editorPreferences} />
+        </div>
+      </section>
 
       {/* Change password — email/password accounts only */}
       {user.hasPassword && (
