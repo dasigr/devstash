@@ -479,6 +479,24 @@ export async function setItemFavorite(
   return count > 0;
 }
 
+/**
+ * Toggle whether an item is pinned, scoped to its owner (guards against IDOR).
+ * A single atomic `updateMany` keyed by `{ id, userId }` — same guard as
+ * `setItemFavorite`. Returns true when a row was updated, false when the id is
+ * unknown or belongs to someone else.
+ */
+export async function setItemPin(
+  id: string,
+  userId: string,
+  isPinned: boolean,
+): Promise<boolean> {
+  const { count } = await prisma.item.updateMany({
+    where: { id, userId },
+    data: { isPinned },
+  });
+  return count > 0;
+}
+
 /** A file-backed item's stored file, for the owner-scoped download proxy. */
 export interface ItemFile {
   fileUrl: string;
@@ -652,7 +670,8 @@ export const getItemsByType = cache(
 
     const items = await prisma.item.findMany({
       where,
-      orderBy: { updatedAt: "desc" },
+      // Pinned items float to the top of the listing, then most-recent first.
+      orderBy: [{ isPinned: "desc" }, { updatedAt: "desc" }],
       skip: pagination.skip,
       take: pagination.take,
       select: itemSelect,
