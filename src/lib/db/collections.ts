@@ -446,6 +446,24 @@ export async function updateCollection(
 }
 
 /**
+ * Toggle whether a collection is favorited, scoped to its owner (guards against
+ * IDOR). A single atomic `updateMany` keyed by `{ id, userId }` — same guard as
+ * `updateCollection`/`deleteCollection`. Returns true when a row was updated,
+ * false when the id is unknown or belongs to someone else.
+ */
+export async function setCollectionFavorite(
+  id: string,
+  userId: string,
+  isFavorite: boolean,
+): Promise<boolean> {
+  const { count } = await prisma.collection.updateMany({
+    where: { id, userId },
+    data: { isFavorite },
+  });
+  return count > 0;
+}
+
+/**
  * Delete one of the given user's collections. A single atomic `deleteMany`
  * scoped by `{ id, userId }` (no TOCTOU window, still guards IDOR); returns
  * false when nothing matched.

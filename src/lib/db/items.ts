@@ -460,6 +460,25 @@ export async function deleteItem(
   return true;
 }
 
+/**
+ * Toggle whether an item is favorited, scoped to its owner (guards against
+ * IDOR). A single atomic `updateMany` keyed by `{ id, userId }` — it can't be
+ * made to write another user's row the way `item.update` (which keys off the
+ * unique id alone) could. Returns true when a row was updated, false when the id
+ * is unknown or belongs to someone else.
+ */
+export async function setItemFavorite(
+  id: string,
+  userId: string,
+  isFavorite: boolean,
+): Promise<boolean> {
+  const { count } = await prisma.item.updateMany({
+    where: { id, userId },
+    data: { isFavorite },
+  });
+  return count > 0;
+}
+
 /** A file-backed item's stored file, for the owner-scoped download proxy. */
 export interface ItemFile {
   fileUrl: string;

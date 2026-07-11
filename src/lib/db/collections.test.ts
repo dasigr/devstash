@@ -51,6 +51,7 @@ vi.mock("@/generated/prisma/client", () => ({
 import {
   createCollection,
   deleteCollection,
+  setCollectionFavorite,
   updateCollection,
   getAllCollections,
   getCollectionDetail,
@@ -602,5 +603,38 @@ describe("deleteCollection", () => {
     deleteMany.mockResolvedValue({ count: 0 });
 
     await expect(deleteCollection("col_other", "user_1")).resolves.toBe(false);
+  });
+});
+
+describe("setCollectionFavorite", () => {
+  beforeEach(() => {
+    updateMany.mockReset();
+  });
+
+  it("scopes the update to the id and the owner (IDOR guard)", async () => {
+    updateMany.mockResolvedValue({ count: 1 });
+
+    await setCollectionFavorite("col_1", "user_1", true);
+
+    expect(updateMany).toHaveBeenCalledWith({
+      where: { id: "col_1", userId: "user_1" },
+      data: { isFavorite: true },
+    });
+  });
+
+  it("reports true when a row was updated", async () => {
+    updateMany.mockResolvedValue({ count: 1 });
+
+    await expect(setCollectionFavorite("col_1", "user_1", false)).resolves.toBe(
+      true,
+    );
+  });
+
+  it("reports false for an unknown or foreign collection", async () => {
+    updateMany.mockResolvedValue({ count: 0 });
+
+    await expect(
+      setCollectionFavorite("col_other", "user_1", true),
+    ).resolves.toBe(false);
   });
 });

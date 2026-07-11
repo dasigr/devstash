@@ -54,6 +54,7 @@ export function CollectionCard({
               name: collection.name,
               description: collection.description,
             }}
+            isFavorite={collection.isFavorite}
           />
         </div>
       </div>

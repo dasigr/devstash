@@ -7,6 +7,7 @@ import type { ActionResult } from "@/actions/items";
 import {
   createCollection as createCollectionQuery,
   deleteCollection as deleteCollectionQuery,
+  setCollectionFavorite as setCollectionFavoriteQuery,
   updateCollection as updateCollectionQuery,
 } from "@/lib/db/collections";
 import type { DashboardCollection } from "@/lib/db/collections";
@@ -82,6 +83,40 @@ export async function updateCollection(
     return { success: true, data: updated };
   } catch (error) {
     console.error("Failed to update collection:", error);
+    return { success: false, error: "Something went wrong. Please try again." };
+  }
+}
+
+/**
+ * Toggle whether a collection the signed-in user owns is favorited. Owner-scoped
+ * in the query, so a client can't favorite someone else's collection — a foreign
+ * or unknown id is reported the same way, as "not found".
+ */
+export async function setCollectionFavorite(
+  collectionId: string,
+  isFavorite: boolean,
+): Promise<ActionResult<{ id: string; isFavorite: boolean }>> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { success: false, error: "You must be signed in." };
+  }
+
+  if (typeof isFavorite !== "boolean") {
+    return { success: false, error: "Invalid request." };
+  }
+
+  try {
+    const updated = await setCollectionFavoriteQuery(
+      collectionId,
+      session.user.id,
+      isFavorite,
+    );
+    if (!updated) {
+      return { success: false, error: "Collection not found." };
+    }
+    return { success: true, data: { id: collectionId, isFavorite } };
+  } catch (error) {
+    console.error("Failed to update collection favorite:", error);
     return { success: false, error: "Something went wrong. Please try again." };
   }
 }

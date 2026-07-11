@@ -2,22 +2,33 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock the session and the query layer so the action's own logic (auth guard,
 // validation, error mapping) is exercised without a database.
-const { auth, createItemQuery, updateItemQuery, deleteItemQuery } = vi.hoisted(
-  () => ({
-    auth: vi.fn(),
-    createItemQuery: vi.fn(),
-    updateItemQuery: vi.fn(),
-    deleteItemQuery: vi.fn(),
-  }),
-);
+const {
+  auth,
+  createItemQuery,
+  updateItemQuery,
+  deleteItemQuery,
+  setItemFavoriteQuery,
+} = vi.hoisted(() => ({
+  auth: vi.fn(),
+  createItemQuery: vi.fn(),
+  updateItemQuery: vi.fn(),
+  deleteItemQuery: vi.fn(),
+  setItemFavoriteQuery: vi.fn(),
+}));
 vi.mock("@/auth", () => ({ auth }));
 vi.mock("@/lib/db/items", () => ({
   createItem: createItemQuery,
   updateItem: updateItemQuery,
   deleteItem: deleteItemQuery,
+  setItemFavorite: setItemFavoriteQuery,
 }));
 
-import { createItem, deleteItem, updateItem } from "@/actions/items";
+import {
+  createItem,
+  deleteItem,
+  setItemFavorite,
+  updateItem,
+} from "@/actions/items";
 
 const validInput = { title: "Updated", tags: ["react"] };
 
@@ -237,6 +248,77 @@ describe("deleteItem action", () => {
     deleteItemQuery.mockRejectedValue(new Error("db down"));
 
     const result = await deleteItem("item_1");
+
+    expect(result).toEqual({
+      success: false,
+      error: "Something went wrong. Please try again.",
+    });
+  });
+});
+
+describe("setItemFavorite action", () => {
+  beforeEach(() => {
+    auth.mockReset();
+    setItemFavoriteQuery.mockReset();
+  });
+
+  it("rejects an unauthenticated caller without touching the DB", async () => {
+    auth.mockResolvedValue(null);
+
+    const result = await setItemFavorite("item_1", true);
+
+    expect(result).toEqual({ success: false, error: "You must be signed in." });
+    expect(setItemFavoriteQuery).not.toHaveBeenCalled();
+  });
+
+  it("rejects a non-boolean flag without touching the DB", async () => {
+    auth.mockResolvedValue({ user: { id: "user_1" } });
+
+    const result = await setItemFavorite(
+      "item_1",
+      "yes" as unknown as boolean,
+    );
+
+    expect(result).toEqual({ success: false, error: "Invalid request." });
+    expect(setItemFavoriteQuery).not.toHaveBeenCalled();
+  });
+
+  it("passes the id, owner id, and flag to the query", async () => {
+    auth.mockResolvedValue({ user: { id: "user_1" } });
+    setItemFavoriteQuery.mockResolvedValue(true);
+
+    await setItemFavorite("item_1", true);
+
+    expect(setItemFavoriteQuery).toHaveBeenCalledWith("item_1", "user_1", true);
+  });
+
+  it("maps a missing/foreign item to a not-found error", async () => {
+    auth.mockResolvedValue({ user: { id: "user_1" } });
+    setItemFavoriteQuery.mockResolvedValue(false);
+
+    const result = await setItemFavorite("item_1", true);
+
+    expect(result).toEqual({ success: false, error: "Item not found." });
+  });
+
+  it("returns the id and new flag on success", async () => {
+    auth.mockResolvedValue({ user: { id: "user_1" } });
+    setItemFavoriteQuery.mockResolvedValue(true);
+
+    const result = await setItemFavorite("item_1", false);
+
+    expect(result).toEqual({
+      success: true,
+      data: { id: "item_1", isFavorite: false },
+    });
+  });
+
+  it("returns a generic error when the query throws", async () => {
+    auth.mockResolvedValue({ user: { id: "user_1" } });
+    setItemFavoriteQuery.mockRejectedValue(new Error("db down"));
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const result = await setItemFavorite("item_1", true);
 
     expect(result).toEqual({
       success: false,

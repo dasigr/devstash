@@ -6,6 +6,7 @@ import { auth } from "@/auth";
 import {
   createItem as createItemQuery,
   deleteItem as deleteItemQuery,
+  setItemFavorite as setItemFavoriteQuery,
   updateItem as updateItemQuery,
 } from "@/lib/db/items";
 import type { ItemDetail } from "@/lib/db/items";
@@ -87,6 +88,41 @@ export async function updateItem(
     return { success: true, data: updated };
   } catch (error) {
     console.error("Failed to update item:", error);
+    return { success: false, error: "Something went wrong. Please try again." };
+  }
+}
+
+/**
+ * Toggle whether an item the signed-in user owns is favorited. Resolves the
+ * session, then delegates to the owner-scoped query — which updates nothing for a
+ * missing or foreign item, so a user can only favorite their own. Returns a
+ * not-found error in that case, or the item's new favorite state on success.
+ */
+export async function setItemFavorite(
+  itemId: string,
+  isFavorite: boolean,
+): Promise<ActionResult<{ id: string; isFavorite: boolean }>> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { success: false, error: "You must be signed in." };
+  }
+
+  if (typeof isFavorite !== "boolean") {
+    return { success: false, error: "Invalid request." };
+  }
+
+  try {
+    const updated = await setItemFavoriteQuery(
+      itemId,
+      session.user.id,
+      isFavorite,
+    );
+    if (!updated) {
+      return { success: false, error: "Item not found." };
+    }
+    return { success: true, data: { id: itemId, isFavorite } };
+  } catch (error) {
+    console.error("Failed to update item favorite:", error);
     return { success: false, error: "Something went wrong. Please try again." };
   }
 }
