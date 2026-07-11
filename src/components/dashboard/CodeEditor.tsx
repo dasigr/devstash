@@ -12,6 +12,7 @@ import { Check, Copy } from "lucide-react";
 
 import { monacoLanguage } from "@/lib/code-types";
 import { Button } from "@/components/ui/button";
+import { useEditorPreferences } from "@/components/dashboard/editor-preferences-context";
 
 // Load Monaco from the CDN, pinned to the version we install so the runtime and
 // the bundled TypeScript types stay in lockstep.
@@ -21,12 +22,12 @@ loader.config({
 
 const MIN_HEIGHT = 64;
 const MAX_HEIGHT = 400;
-const THEME = "devstash-dark";
 
-/** Editor background — matches the app's dark `--background` so it reads seamlessly. */
-const EDITOR_BG = "#1c1c1c";
-
-/** Register the app's dark theme once, before the first editor mounts. */
+/**
+ * Register the two non-built-in themes once, before the first editor mounts.
+ * `vs-dark` is built into Monaco, so only `monokai` and `github-dark` are
+ * hand-defined here (compact token rules covering the common syntax kinds).
+ */
 const handleBeforeMount: BeforeMount = (monaco) => {
   // Snippets are often fragments, not whole programs — suppress Monaco's TS/JS
   // validation so imports and bare expressions don't get flagged as errors.
@@ -34,24 +35,51 @@ const handleBeforeMount: BeforeMount = (monaco) => {
   monaco.languages.typescript.typescriptDefaults.setDiagnosticsOptions(diagnostics);
   monaco.languages.typescript.javascriptDefaults.setDiagnosticsOptions(diagnostics);
 
-  monaco.editor.defineTheme(THEME, {
+  monaco.editor.defineTheme("monokai", {
     base: "vs-dark",
     inherit: true,
-    rules: [],
+    rules: [
+      { token: "comment", foreground: "88846f" },
+      { token: "string", foreground: "e6db74" },
+      { token: "number", foreground: "ae81ff" },
+      { token: "keyword", foreground: "f92672" },
+      { token: "type", foreground: "66d9ef", fontStyle: "italic" },
+      { token: "function", foreground: "a6e22e" },
+      { token: "variable", foreground: "f8f8f2" },
+      { token: "constant", foreground: "ae81ff" },
+    ],
     colors: {
-      "editor.background": EDITOR_BG,
-      "editor.foreground": "#e5e5e5",
-      "editorLineNumber.foreground": "#525252",
-      "editorLineNumber.activeForeground": "#a3a3a3",
-      "editorCursor.foreground": "#e5e5e5",
-      "editor.selectionBackground": "#3a3a3a",
-      "editor.lineHighlightBackground": "#ffffff08",
-      "editorWidget.background": "#292929",
-      "editorWidget.border": "#ffffff1a",
-      // Themed scrollbar — translucent white sliders over the dark surface.
-      "scrollbarSlider.background": "#ffffff20",
-      "scrollbarSlider.hoverBackground": "#ffffff35",
-      "scrollbarSlider.activeBackground": "#ffffff55",
+      "editor.background": "#272822",
+      "editor.foreground": "#f8f8f2",
+      "editorLineNumber.foreground": "#75715e",
+      "editorLineNumber.activeForeground": "#c9c9b8",
+      "editorCursor.foreground": "#f8f8f0",
+      "editor.selectionBackground": "#49483e",
+      "editor.lineHighlightBackground": "#3e3d32",
+    },
+  });
+
+  monaco.editor.defineTheme("github-dark", {
+    base: "vs-dark",
+    inherit: true,
+    rules: [
+      { token: "comment", foreground: "8b949e" },
+      { token: "string", foreground: "a5d6ff" },
+      { token: "number", foreground: "79c0ff" },
+      { token: "keyword", foreground: "ff7b72" },
+      { token: "type", foreground: "ffa657" },
+      { token: "function", foreground: "d2a8ff" },
+      { token: "variable", foreground: "ffa657" },
+      { token: "constant", foreground: "79c0ff" },
+    ],
+    colors: {
+      "editor.background": "#0d1117",
+      "editor.foreground": "#e6edf3",
+      "editorLineNumber.foreground": "#6e7681",
+      "editorLineNumber.activeForeground": "#e6edf3",
+      "editorCursor.foreground": "#e6edf3",
+      "editor.selectionBackground": "#264f78",
+      "editor.lineHighlightBackground": "#161b22",
     },
   });
 };
@@ -79,6 +107,7 @@ export function CodeEditor({
   onChange?: (value: string) => void;
   ariaLabel?: string;
 }) {
+  const prefs = useEditorPreferences();
   const [height, setHeight] = useState(MIN_HEIGHT);
   const [copied, setCopied] = useState(false);
 
@@ -108,8 +137,8 @@ export function CodeEditor({
   const options: editor.IStandaloneEditorConstructionOptions = {
     readOnly,
     domReadOnly: readOnly,
-    minimap: { enabled: false },
-    fontSize: 12,
+    minimap: { enabled: prefs.minimap },
+    fontSize: prefs.fontSize,
     fontFamily: '"Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace',
     lineNumbers: "on",
     scrollBeyondLastLine: false,
@@ -126,9 +155,9 @@ export function CodeEditor({
     hideCursorInOverviewRuler: true,
     folding: false,
     renderLineHighlight: readOnly ? "none" : "line",
-    wordWrap: "off",
+    wordWrap: prefs.wordWrap ? "on" : "off",
     automaticLayout: true,
-    tabSize: 2,
+    tabSize: prefs.tabSize,
     smoothScrolling: true,
     contextmenu: !readOnly,
     quickSuggestions: false,
@@ -137,10 +166,7 @@ export function CodeEditor({
   };
 
   return (
-    <div
-      className="overflow-hidden rounded-lg border border-border"
-      style={{ backgroundColor: EDITOR_BG }}
-    >
+    <div className="overflow-hidden rounded-lg border border-border bg-card">
       {/* Header: macOS dots + language label + copy */}
       <div className="flex items-center justify-between gap-2 border-b border-border bg-muted/50 px-3 py-2">
         <div className="flex items-center gap-1.5" aria-hidden="true">
@@ -169,7 +195,7 @@ export function CodeEditor({
         height={height}
         language={monacoLanguage(language)}
         value={value}
-        theme={THEME}
+        theme={prefs.theme}
         beforeMount={handleBeforeMount}
         onMount={handleMount}
         onChange={handleChange}

@@ -10,6 +10,7 @@ import { ItemCardButton } from "@/components/dashboard/ItemCardButton";
 import { ImageCardButton } from "@/components/dashboard/ImageCardButton";
 import { FileListRow } from "@/components/dashboard/FileListRow";
 import { ItemDrawerProvider } from "@/components/dashboard/ItemDrawer";
+import { EditorPreferencesProvider } from "@/components/dashboard/editor-preferences-context";
 import { ItemTypeIcon } from "@/components/dashboard/ItemTypeIcon";
 import { Pagination } from "@/components/dashboard/Pagination";
 import {
@@ -19,6 +20,7 @@ import {
 } from "@/lib/db/items";
 import { getSidebarCollections } from "@/lib/db/collections";
 import { getCurrentUser } from "@/lib/db/user";
+import { getEditorPreferences } from "@/lib/db/editor-preferences";
 import { parsePageParam } from "@/lib/pagination";
 
 export async function generateMetadata({
@@ -51,11 +53,13 @@ export default async function ItemsByTypePage({
   const currentUser = await getCurrentUser();
   if (!currentUser) redirect("/sign-in");
 
-  const [listing, sidebarItemTypes, sidebarCollections] = await Promise.all([
-    getItemsByType(type, currentUser.id, requestedPage),
-    getSidebarItemTypes(currentUser.id),
-    getSidebarCollections(currentUser.id),
-  ]);
+  const [listing, sidebarItemTypes, sidebarCollections, editorPreferences] =
+    await Promise.all([
+      getItemsByType(type, currentUser.id, requestedPage),
+      getSidebarItemTypes(currentUser.id),
+      getSidebarCollections(currentUser.id),
+      getEditorPreferences(currentUser.id),
+    ]);
 
   // Unknown type slug — render a 404. (A known type the user has no items for
   // renders the empty state below, not a 404.)
@@ -68,6 +72,7 @@ export default async function ItemsByTypePage({
 
   return (
     <SidebarProvider>
+      <EditorPreferencesProvider value={editorPreferences}>
       <ItemDrawerProvider>
       <div className="flex h-full min-h-screen bg-background text-foreground">
         <Sidebar
@@ -138,6 +143,7 @@ export default async function ItemsByTypePage({
         </div>
       </div>
       </ItemDrawerProvider>
+      </EditorPreferencesProvider>
     </SidebarProvider>
   );
 }

@@ -7,12 +7,14 @@ import { Sidebar } from "@/components/dashboard/Sidebar";
 import { SidebarProvider } from "@/components/dashboard/sidebar-context";
 import { TopBar } from "@/components/dashboard/TopBar";
 import { ItemDrawerProvider } from "@/components/dashboard/ItemDrawer";
+import { EditorPreferencesProvider } from "@/components/dashboard/editor-preferences-context";
 import { SectionHeader } from "@/components/dashboard/SectionHeader";
 import { CollectionCard } from "@/components/dashboard/CollectionCard";
 import { Pagination } from "@/components/dashboard/Pagination";
 import { getAllCollections, getSidebarCollections } from "@/lib/db/collections";
 import { getSidebarItemTypes } from "@/lib/db/items";
 import { getCurrentUser } from "@/lib/db/user";
+import { getEditorPreferences } from "@/lib/db/editor-preferences";
 import { parsePageParam } from "@/lib/pagination";
 
 export const metadata: Metadata = {
@@ -35,17 +37,23 @@ export default async function CollectionsPage({
   const currentUser = await getCurrentUser();
   if (!currentUser) redirect("/sign-in");
 
-  const [collectionPage, sidebarItemTypes, sidebarCollections] =
-    await Promise.all([
-      getAllCollections(currentUser.id, requestedPage),
-      getSidebarItemTypes(currentUser.id),
-      getSidebarCollections(currentUser.id),
-    ]);
+  const [
+    collectionPage,
+    sidebarItemTypes,
+    sidebarCollections,
+    editorPreferences,
+  ] = await Promise.all([
+    getAllCollections(currentUser.id, requestedPage),
+    getSidebarItemTypes(currentUser.id),
+    getSidebarCollections(currentUser.id),
+    getEditorPreferences(currentUser.id),
+  ]);
 
   const { collections, pagination } = collectionPage;
 
   return (
     <SidebarProvider>
+      <EditorPreferencesProvider value={editorPreferences}>
       {/* The TopBar's command palette opens items in the drawer. */}
       <ItemDrawerProvider>
       <div className="flex h-full min-h-screen bg-background text-foreground">
@@ -93,6 +101,7 @@ export default async function CollectionsPage({
         </div>
       </div>
       </ItemDrawerProvider>
+      </EditorPreferencesProvider>
     </SidebarProvider>
   );
 }

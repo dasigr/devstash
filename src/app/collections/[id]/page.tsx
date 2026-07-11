@@ -9,6 +9,7 @@ import { TopBar } from "@/components/dashboard/TopBar";
 import { SectionHeader } from "@/components/dashboard/SectionHeader";
 import { ItemCardButton } from "@/components/dashboard/ItemCardButton";
 import { ItemDrawerProvider } from "@/components/dashboard/ItemDrawer";
+import { EditorPreferencesProvider } from "@/components/dashboard/editor-preferences-context";
 import { CollectionDetailActions } from "@/components/dashboard/CollectionDetailActions";
 import { Pagination } from "@/components/dashboard/Pagination";
 import {
@@ -18,6 +19,7 @@ import {
 } from "@/lib/db/collections";
 import { getSidebarItemTypes } from "@/lib/db/items";
 import { getCurrentUser } from "@/lib/db/user";
+import { getEditorPreferences } from "@/lib/db/editor-preferences";
 import { parsePageParam } from "@/lib/pagination";
 
 export async function generateMetadata({
@@ -57,11 +59,13 @@ export default async function CollectionDetailPage({
   const currentUser = await getCurrentUser();
   if (!currentUser) redirect("/sign-in");
 
-  const [collection, sidebarItemTypes, sidebarCollections] = await Promise.all([
-    getCollectionDetail(id, currentUser.id, requestedPage),
-    getSidebarItemTypes(currentUser.id),
-    getSidebarCollections(currentUser.id),
-  ]);
+  const [collection, sidebarItemTypes, sidebarCollections, editorPreferences] =
+    await Promise.all([
+      getCollectionDetail(id, currentUser.id, requestedPage),
+      getSidebarItemTypes(currentUser.id),
+      getSidebarCollections(currentUser.id),
+      getEditorPreferences(currentUser.id),
+    ]);
 
   // Unknown id and another user's collection are indistinguishable here — both
   // come back null, so both 404 and neither confirms the collection exists.
@@ -74,6 +78,7 @@ export default async function CollectionDetailPage({
 
   return (
     <SidebarProvider>
+      <EditorPreferencesProvider value={editorPreferences}>
       <ItemDrawerProvider>
         <div className="flex h-full min-h-screen bg-background text-foreground">
           <Sidebar
@@ -144,6 +149,7 @@ export default async function CollectionDetailPage({
           </div>
         </div>
       </ItemDrawerProvider>
+      </EditorPreferencesProvider>
     </SidebarProvider>
   );
 }

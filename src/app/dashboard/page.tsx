@@ -8,6 +8,7 @@ import { SectionHeader } from "@/components/dashboard/SectionHeader";
 import { CollectionCard } from "@/components/dashboard/CollectionCard";
 import { ItemCardButton } from "@/components/dashboard/ItemCardButton";
 import { ItemDrawerProvider } from "@/components/dashboard/ItemDrawer";
+import { EditorPreferencesProvider } from "@/components/dashboard/editor-preferences-context";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { connection } from "next/server";
@@ -24,6 +25,7 @@ import {
   getSidebarItemTypes,
 } from "@/lib/db/items";
 import { getCurrentUser } from "@/lib/db/user";
+import { getEditorPreferences } from "@/lib/db/editor-preferences";
 
 export const metadata: Metadata = {
   title: "Dashboard",
@@ -47,6 +49,7 @@ export default async function DashboardPage() {
     itemStats,
     sidebarItemTypes,
     sidebarCollections,
+    editorPreferences,
   ] = await Promise.all([
     getRecentCollections(currentUser.id),
     getCollectionStats(currentUser.id),
@@ -55,10 +58,12 @@ export default async function DashboardPage() {
     getItemStats(currentUser.id),
     getSidebarItemTypes(currentUser.id),
     getSidebarCollections(currentUser.id),
+    getEditorPreferences(currentUser.id),
   ]);
 
   return (
     <SidebarProvider>
+      <EditorPreferencesProvider value={editorPreferences}>
       <ItemDrawerProvider>
       <div className="flex h-full min-h-screen bg-background text-foreground">
         <Sidebar
@@ -127,6 +132,7 @@ export default async function DashboardPage() {
         </div>
       </div>
       </ItemDrawerProvider>
+      </EditorPreferencesProvider>
     </SidebarProvider>
   );
 }
