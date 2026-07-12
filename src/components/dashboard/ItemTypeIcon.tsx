@@ -9,7 +9,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-/** Maps the `icon` string on an item type (see mock-data) to its lucide icon. */
+/** Maps the `icon` string on an item type to its lucide icon. */
 const ICONS: Record<string, LucideIcon> = {
   Code,
   Sparkles,
