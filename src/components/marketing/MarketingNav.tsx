@@ -37,7 +37,7 @@ export function MarketingNav() {
     >
       <div
         className={cn(
-          "mx-auto flex h-16 w-full max-w-[1160px] items-center gap-6 px-6",
+          "relative mx-auto flex h-16 w-full max-w-[1160px] items-center gap-6 px-6",
           open && "h-auto flex-wrap gap-y-3.5 pb-4"
         )}
       >
@@ -58,7 +58,7 @@ export function MarketingNav() {
         <nav
           aria-label="Primary"
           className={cn(
-            "text-[0.94rem] text-[var(--m-text-dim)] md:ml-3 md:mr-auto md:flex md:flex-row md:items-center md:gap-6",
+            "text-[0.94rem] text-[var(--m-text-dim)] md:absolute md:inset-y-0 md:left-1/2 md:flex md:-translate-x-1/2 md:flex-row md:items-center md:gap-6",
             open ? "flex basis-full flex-col gap-3" : "hidden"
           )}
         >
@@ -72,7 +72,7 @@ export function MarketingNav() {
 
         <div
           className={cn(
-            "items-center gap-2.5",
+            "items-center gap-2.5 md:ml-auto",
             open ? "flex basis-full flex-col gap-3" : "hidden md:flex"
           )}
         >
