@@ -46,3 +46,6 @@ next-env.d.ts
 
 # playwright MCP session artifacts
 .playwright-mcp/
+
+# browser screenshots
+/screenshots/
