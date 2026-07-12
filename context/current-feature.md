@@ -1,16 +1,24 @@
-# Current Feature
+# Stripe Integration — Core Infrastructure (Phase 1)
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+- Install the `stripe` server SDK.
+- `src/lib/stripe.ts` — lazy, memoized Stripe client mirroring `src/lib/r2.ts`: `isStripeConfigured()`, `stripe()`, `appBaseUrl()`, `priceIdForPlan()`.
+- `src/lib/plan.ts` — free-tier limits (`FREE_ITEM_LIMIT=50`, `FREE_COLLECTION_LIMIT=3`), `PRO_ITEM_TYPES`, `QuotaCheck`, and pure `canCreateItem` / `canCreateCollection` decision helpers.
+- `src/lib/plan.test.ts` — boundary logic (49/50/51 items, 2/3/4 collections) + Pro-bypass.
+- `npm run test`, `tsc --noEmit`, `npm run lint`, `npm run build` all clean; route table unchanged.
 
 ## Notes
 
-<!-- Additional context, constraints, or details from spec -->
+- Pure library code only — no routes, webhooks, gating, or UI (Phase 2 builds those on top).
+- **No Prisma migration** — billing columns (`isPro`, `stripeCustomerId`, `stripeSubscriptionId`) already exist on `User`.
+- Env vars already staged in `.env.example`; real Test-mode values go in the ignored `.env` (manual user step).
+- Pin the Stripe `apiVersion` to whatever the installed SDK's types expect (`typescript: true` enforces it).
+- `appBaseUrl()` follows the spec literally (`AUTH_URL ?? "http://localhost:3000"`); Phase 2 should prefer `getBaseUrl(request)` from `src/lib/base-url.ts` where a `Request` is in scope.
 
 ## History
 
