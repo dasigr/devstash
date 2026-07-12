@@ -89,7 +89,7 @@ export default async function CollectionDetailPage({
 
           {/* Main column: top bar + content */}
           <div className="flex min-w-0 flex-1 flex-col">
-            <TopBar />
+            <TopBar isPro={currentUser.isPro} />
             <main className="flex-1 space-y-8 overflow-y-auto p-6">
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">

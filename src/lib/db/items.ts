@@ -1,6 +1,7 @@
 import { cache } from "react";
 
 import { prisma } from "@/lib/prisma";
+import { PRO_ITEM_TYPES } from "@/lib/plan";
 import { deleteFromR2, r2KeyFromUrl } from "@/lib/r2";
 import {
   DASHBOARD_RECENT_ITEMS_LIMIT,
@@ -330,11 +331,19 @@ function collectionLinks(collectionIds: string[]) {
  * the item under the given collections — filtered to the ones the user owns.
  * Returns null when the system type can't be found (shouldn't happen once the
  * types are seeded), so the caller can surface a generic error.
+ *
+ * `isPro` is the source-of-truth gate for the file/image (Pro-only) types: a
+ * free user's request is rejected here even if a crafted payload smuggled past
+ * the client's disabled chips (mirrors how the upload route treats the client
+ * validation as UX only).
  */
 export async function createItem(
   userId: string,
   data: CreateItemInput,
+  isPro: boolean,
 ): Promise<ItemDetail | null> {
+  if (PRO_ITEM_TYPES.has(data.type) && !isPro) return null;
+
   const type = await prisma.itemType.findFirst({
     where: { isSystem: true, name: data.type },
     select: { id: true },

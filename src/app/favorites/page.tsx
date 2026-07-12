@@ -63,7 +63,7 @@ export default async function FavoritesPage() {
 
             {/* Main column: top bar + content */}
             <div className="flex min-w-0 flex-1 flex-col">
-              <TopBar />
+              <TopBar isPro={currentUser.isPro} />
               <main className="flex-1 space-y-8 overflow-y-auto p-6">
                 <h1 className="flex items-center gap-2 text-2xl font-semibold text-foreground">
                   <Star className="size-6 text-yellow-400" />

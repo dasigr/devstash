@@ -6,6 +6,7 @@ import { connection } from "next/server";
 
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { BillingSection } from "@/components/settings/BillingSection";
 import { ChangePasswordForm } from "@/components/settings/ChangePasswordForm";
 import { DeleteAccountDialog } from "@/components/settings/DeleteAccountDialog";
 import { EditorPreferencesForm } from "@/components/settings/EditorPreferencesForm";
@@ -55,6 +56,19 @@ export default async function SettingsPage() {
         </p>
         <div className="mt-4">
           <EditorPreferencesForm initial={editorPreferences} />
+        </div>
+      </section>
+
+      {/* Billing */}
+      <section className="rounded-xl border border-border bg-card p-6">
+        <h2 className="text-base font-semibold text-foreground">Billing</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {user.isPro
+            ? "You're on the Pro plan."
+            : "Upgrade to Pro for unlimited items, collections, uploads, and AI features."}
+        </p>
+        <div className="mt-4">
+          <BillingSection isPro={user.isPro} />
         </div>
       </section>
 

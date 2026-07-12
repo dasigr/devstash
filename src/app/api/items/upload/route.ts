@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { auth } from "@/auth";
+import { prisma } from "@/lib/prisma";
 import { buildObjectKey, isR2Configured, r2PublicUrl, uploadToR2 } from "@/lib/r2";
 import { isUploadKind, validateUpload } from "@/lib/validations/upload";
 
@@ -22,6 +23,19 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { success: false, error: "File uploads are not configured." },
       { status: 503 },
+    );
+  }
+
+  // File/image uploads are a Pro feature. The client hides the chips for free
+  // users; this is the server-side source of truth.
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { isPro: true },
+  });
+  if (!user?.isPro) {
+    return NextResponse.json(
+      { success: false, error: "File uploads are a Pro feature. Upgrade to Pro." },
+      { status: 403 },
     );
   }
 

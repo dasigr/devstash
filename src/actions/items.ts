@@ -11,6 +11,8 @@ import {
   updateItem as updateItemQuery,
 } from "@/lib/db/items";
 import type { ItemDetail } from "@/lib/db/items";
+import { getCurrentUser } from "@/lib/db/user";
+import { canCreateItem } from "@/lib/plan";
 import { createItemSchema, updateItemSchema } from "@/lib/validations/items";
 
 /** Standard server-action result — mirrors the API routes' `{ success }` shape. */
@@ -45,8 +47,20 @@ export async function createItem(
     };
   }
 
+  // Enforce the free-tier item cap before any write; `isPro` also gates the
+  // file/image (Pro-only) types in the query below.
+  const user = await getCurrentUser();
+  const isPro = user?.isPro ?? false;
+  const { allowed } = await canCreateItem(session.user.id, isPro);
+  if (!allowed) {
+    return {
+      success: false,
+      error: "Free plan is limited to 50 items. Upgrade to Pro for unlimited.",
+    };
+  }
+
   try {
-    const created = await createItemQuery(session.user.id, parsed.data);
+    const created = await createItemQuery(session.user.id, parsed.data, isPro);
     if (!created) {
       return { success: false, error: "Something went wrong. Please try again." };
     }

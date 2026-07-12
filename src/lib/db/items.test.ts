@@ -337,9 +337,34 @@ describe("createItem", () => {
   it("returns null when the system type can't be resolved", async () => {
     typeFindFirst.mockResolvedValue(null);
 
-    const result = await createItem("user_1", snippetData);
+    const result = await createItem("user_1", snippetData, true);
 
     expect(result).toBeNull();
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it("rejects a file/image type when the user is not Pro (source of truth)", async () => {
+    const result = await createItem(
+      "user_1",
+      {
+        type: "image",
+        title: "Sneaky",
+        description: null,
+        content: null,
+        language: null,
+        url: null,
+        fileUrl: "https://pub.example.com/items/u/x.png",
+        fileName: "x.png",
+        fileSize: 10,
+        tags: [],
+        collectionIds: [],
+      },
+      false,
+    );
+
+    expect(result).toBeNull();
+    // Rejected before any DB work.
+    expect(typeFindFirst).not.toHaveBeenCalled();
     expect(create).not.toHaveBeenCalled();
   });
 
@@ -348,7 +373,7 @@ describe("createItem", () => {
     create.mockResolvedValue({ id: "item_new" });
     findFirst.mockResolvedValue(rawItem({ id: "item_new" }));
 
-    await createItem("user_1", snippetData);
+    await createItem("user_1", snippetData, true);
 
     expect(typeFindFirst.mock.calls[0][0].where).toEqual({
       isSystem: true,
@@ -361,7 +386,7 @@ describe("createItem", () => {
     create.mockResolvedValue({ id: "item_new" });
     findFirst.mockResolvedValue(rawItem({ id: "item_new" }));
 
-    await createItem("user_1", snippetData);
+    await createItem("user_1", snippetData, true);
 
     const data = create.mock.calls[0][0].data;
     expect(data.title).toBe("New snippet");
@@ -396,7 +421,7 @@ describe("createItem", () => {
       fileSize: 12345,
       tags: [],
       collectionIds: [],
-    });
+    }, true);
 
     const data = create.mock.calls[0][0].data;
     expect(data.contentType).toBe("FILE");
@@ -419,7 +444,7 @@ describe("createItem", () => {
       url: "https://example.com",
       tags: [],
       collectionIds: [],
-    });
+    }, true);
 
     const data = create.mock.calls[0][0].data;
     expect(data.contentType).toBe("URL");
@@ -431,7 +456,7 @@ describe("createItem", () => {
     create.mockResolvedValue({ id: "item_new" });
     findFirst.mockResolvedValue(rawItem({ id: "item_new" }));
 
-    const result = await createItem("user_1", snippetData);
+    const result = await createItem("user_1", snippetData, true);
 
     expect(result).toMatchObject({ id: "item_new" });
     // Detail is re-read scoped to the new id and the owner.
@@ -451,7 +476,7 @@ describe("createItem", () => {
     await createItem("user_1", {
       ...snippetData,
       collectionIds: ["col_mine", "col_theirs"],
-    });
+    }, true);
 
     expect(collectionFindMany.mock.calls[0][0].where).toEqual({
       id: { in: ["col_mine", "col_theirs"] },
@@ -467,7 +492,7 @@ describe("createItem", () => {
     create.mockResolvedValue({ id: "item_new" });
     findFirst.mockResolvedValue(rawItem({ id: "item_new" }));
 
-    await createItem("user_1", snippetData);
+    await createItem("user_1", snippetData, true);
 
     expect(collectionFindMany).not.toHaveBeenCalled();
     expect(create.mock.calls[0][0].data.collections).toEqual({ create: [] });

@@ -9,6 +9,8 @@ const {
   deleteItemQuery,
   setItemFavoriteQuery,
   setItemPinQuery,
+  getCurrentUser,
+  canCreateItem,
 } = vi.hoisted(() => ({
   auth: vi.fn(),
   createItemQuery: vi.fn(),
@@ -16,6 +18,8 @@ const {
   deleteItemQuery: vi.fn(),
   setItemFavoriteQuery: vi.fn(),
   setItemPinQuery: vi.fn(),
+  getCurrentUser: vi.fn(),
+  canCreateItem: vi.fn(),
 }));
 vi.mock("@/auth", () => ({ auth }));
 vi.mock("@/lib/db/items", () => ({
@@ -25,6 +29,8 @@ vi.mock("@/lib/db/items", () => ({
   setItemFavorite: setItemFavoriteQuery,
   setItemPin: setItemPinQuery,
 }));
+vi.mock("@/lib/db/user", () => ({ getCurrentUser }));
+vi.mock("@/lib/plan", () => ({ canCreateItem }));
 
 import {
   createItem,
@@ -42,6 +48,11 @@ describe("createItem action", () => {
   beforeEach(() => {
     auth.mockReset();
     createItemQuery.mockReset();
+    getCurrentUser.mockReset();
+    canCreateItem.mockReset();
+    // Default: free user, under the cap.
+    getCurrentUser.mockResolvedValue({ id: "user_1", isPro: false });
+    canCreateItem.mockResolvedValue({ allowed: true, used: 0, limit: 50 });
   });
 
   it("rejects an unauthenticated caller without touching the DB", async () => {
@@ -51,6 +62,31 @@ describe("createItem action", () => {
 
     expect(result).toEqual({ success: false, error: "You must be signed in." });
     expect(createItemQuery).not.toHaveBeenCalled();
+  });
+
+  it("blocks a free user at the item cap without writing", async () => {
+    auth.mockResolvedValue({ user: { id: "user_1" } });
+    canCreateItem.mockResolvedValue({ allowed: false, used: 50, limit: 50 });
+
+    const result = await createItem(validCreate);
+
+    expect(result).toEqual({
+      success: false,
+      error: "Free plan is limited to 50 items. Upgrade to Pro for unlimited.",
+    });
+    expect(createItemQuery).not.toHaveBeenCalled();
+  });
+
+  it("passes isPro=true through for a Pro user (cap lifted)", async () => {
+    auth.mockResolvedValue({ user: { id: "user_1" } });
+    getCurrentUser.mockResolvedValue({ id: "user_1", isPro: true });
+    canCreateItem.mockResolvedValue({ allowed: true, used: 0, limit: Infinity });
+    createItemQuery.mockResolvedValue({ id: "item_new", title: "New" });
+
+    await createItem(validCreate);
+
+    expect(canCreateItem).toHaveBeenCalledWith("user_1", true);
+    expect(createItemQuery.mock.calls[0][2]).toBe(true);
   });
 
   it("returns validation issues for a bad payload", async () => {
@@ -76,12 +112,16 @@ describe("createItem action", () => {
       collectionIds: [" col_a ", "col_a"],
     });
 
-    expect(createItemQuery).toHaveBeenCalledWith("user_1", {
-      type: "snippet",
-      title: "New",
-      tags: ["react"],
-      collectionIds: ["col_a"],
-    });
+    expect(createItemQuery).toHaveBeenCalledWith(
+      "user_1",
+      {
+        type: "snippet",
+        title: "New",
+        tags: ["react"],
+        collectionIds: ["col_a"],
+      },
+      false,
+    );
   });
 
   it("maps an unresolved type (null) to a generic error", async () => {

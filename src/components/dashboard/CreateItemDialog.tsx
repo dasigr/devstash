@@ -65,8 +65,11 @@ function blankToNull(value: string): string | null {
  * "New Item" button that opens a modal for creating an item. A type selector
  * drives which fields show; on submit it calls the `createItem` server action,
  * toasts, closes, and refreshes the list. Rendered in the dashboard top bar.
+ *
+ * `isPro` gates the file/image (Pro-only) types: for free users those chips are
+ * disabled with an "Upgrade to Pro" hint (the server enforces this too).
  */
-export function CreateItemDialog() {
+export function CreateItemDialog({ isPro = false }: { isPro?: boolean }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
 
@@ -116,8 +119,10 @@ export function CreateItemDialog() {
   }
 
   // Switching type clears the type-specific fields so stale file/content data
-  // never rides along to a mismatched type.
+  // never rides along to a mismatched type. Free users can't select the
+  // Pro-only file/image types (their chips are disabled too).
   function handleTypeChange(next: NewItemType) {
+    if (FILE_TYPES.has(next) && !isPro) return;
     setType(next);
     setFile(null);
     setUploading(false);
@@ -214,17 +219,22 @@ export function CreateItemDialog() {
             <div className="flex flex-wrap gap-2">
               {TYPES.map((t) => {
                 const selected = t.value === type;
+                const proLocked = FILE_TYPES.has(t.value) && !isPro;
                 return (
                   <button
                     key={t.value}
                     type="button"
                     onClick={() => handleTypeChange(t.value)}
                     aria-pressed={selected}
+                    disabled={proLocked}
+                    title={proLocked ? "Upgrade to Pro to add files & images" : undefined}
                     className={cn(
                       "flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm transition-colors",
-                      selected
-                        ? "border-primary bg-primary/10 text-foreground"
-                        : "border-border text-muted-foreground hover:bg-muted hover:text-foreground",
+                      proLocked
+                        ? "cursor-not-allowed border-border text-muted-foreground opacity-50"
+                        : selected
+                          ? "border-primary bg-primary/10 text-foreground"
+                          : "border-border text-muted-foreground hover:bg-muted hover:text-foreground",
                     )}
                   >
                     <ItemTypeIcon
@@ -233,6 +243,11 @@ export function CreateItemDialog() {
                       className="size-4"
                     />
                     {t.label}
+                    {proLocked && (
+                      <span className="ml-0.5 rounded bg-muted px-1 text-[10px] font-medium uppercase tracking-wide">
+                        Pro
+                      </span>
+                    )}
                   </button>
                 );
               })}

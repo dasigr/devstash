@@ -15,7 +15,7 @@ import { CreateCollectionDialog } from "@/components/dashboard/CreateCollectionD
  * The search icon is the command palette's trigger, so every page rendering a
  * TopBar must sit inside an <ItemDrawerProvider> (the palette opens items).
  */
-export function TopBar() {
+export function TopBar({ isPro = false }: { isPro?: boolean }) {
   return (
     <header className="flex h-16 shrink-0 items-center gap-4 border-b border-border px-6">
       <SidebarToggle />
@@ -30,7 +30,7 @@ export function TopBar() {
           <Star className="size-4" />
         </Link>
         <CreateCollectionDialog />
-        <CreateItemDialog />
+        <CreateItemDialog isPro={isPro} />
       </div>
     </header>
   );
