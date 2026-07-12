@@ -1,417 +1,473 @@
 # AI Integration Plan
 
-> **Research document — not an implementation.** Investigates best practices for wiring the
-> project's four planned Pro-only AI features into this Next.js 16 codebase. Produced by
-> `/research ai-integration-research.md`. No source code changed.
+> Research + implementation plan for DevStash's Pro-only AI features using the
+> **official OpenAI Node SDK**. This is a *plan*, not shipped code — nothing here
+> exists in `src/` yet. It was regenerated fresh against the current codebase
+> (which now has the full Stripe/Pro-gating stack, `plan.ts`, `rate-limit.ts`,
+> and the first server actions).
 
 ## Scope
 
-Four AI features from `context/project-overview.md` §3.F (all **Pro-only**):
+The four AI features from `context/project-overview.md` §3F ("AI Features (Pro
+only)"):
 
-| Feature | Input | Output shape | Streaming? |
+| Feature | Input | Output | Storage |
 | --- | --- | --- | --- |
-| **Auto-tagging** | item content/title | `string[]` (suggested tags) | No — structured |
-| **AI summaries** | item content | short markdown text | Optional |
-| **Code explanation** | snippet content + language | markdown text | **Yes** (feels fast) |
-| **Prompt optimizer** | a prompt (text) | rewritten prompt + notes | Optional |
+| **AI auto-tag** | item title + content | a short list of tag names | suggested, user accepts → written as tags |
+| **AI summary** | item content | 1–3 sentence summary | ephemeral (or a future `Item.summary` column) |
+| **Explain this code** | snippet/command content + language | a Markdown explanation | ephemeral (rendered in the drawer) |
+| **Prompt optimizer** | a prompt item's content | an improved prompt | suggested, user accepts → replaces content |
+
+All four are **Pro-only** per §7 Monetization ("AI auto-tagging / code
+explanation / prompt optimizer ✅ Pro"). During development everything is
+unlocked, but the gate must be built in from the start (see §8).
+
+**Decision (locked):** this plan uses the **raw `openai` package only** —
+`OPENAI_API_KEY`, the Responses API, and Zod/JSON-schema structured output. The
+Vercel AI SDK / AI Gateway path is intentionally **out of scope**.
 
 ---
 
 ## 0. Findings about the current codebase (read before planning)
 
-Two of the prompt's cited sources **do not exist yet** — plan accordingly:
+Any AI code must mirror these existing conventions — they're load-bearing and
+repeatedly enforced across the project's history.
 
-- **`src/actions/*.ts`** — there is **no `src/actions/` directory**. The app has zero Server
-  Actions today; all mutations so far live in **route handlers** under `src/app/api/**` (auth
-  flows). AI features are the natural place to introduce the first Server Actions.
-- **`src/lib/usage-limits.ts`** — does **not exist**. Pro gating is currently only the
-  `User.isPro` boolean (schema + `getCurrentUser()`), plus the freemium table in
-  `project-overview.md` (§7) and the open note (§9) to "build the limit checks (50 items,
-  3 collections) now behind a flag." No quota-enforcement helper has been written.
-
-Patterns that **do** exist and should be mirrored:
-
-- **`src/lib/rate-limit.ts`** — a clean, fail-open, lazily-configured Upstash limiter with a
-  typed `RATE_LIMITS` registry. AI rate limiting should extend this exact pattern.
-- **`src/lib/features.ts`** — env-flag helpers (`isEmailVerificationEnabled()`). Add
-  `isAiEnabled()` here.
-- **`src/lib/prisma.ts`** — singleton with a global cache in dev. The AI client should follow
-  the same lazy-singleton shape.
-- **`src/lib/validations/auth.ts`** — Zod schemas shared between client and server. AI inputs
-  get their own `src/lib/validations/ai.ts`.
-- **`{ success, data, error }` return pattern** — used by every API route; the coding standards
-  (`context/coding-standards.md`) mandate it for Server Actions too.
-- **`User.isPro`** + `getCurrentUser()` in `src/lib/db/user.ts` — the gate source of truth.
-
-No `openai`, `ai`, or `@ai-sdk/*` package is installed, and there are **no AI env vars** in
-`.env.example`.
+- **No AI deps installed.** `package.json` has `stripe` and `zod` but no
+  `openai` / `@ai-sdk/*`. This plan adds exactly one dependency: `openai`.
+- **`src/lib/usage-limits.ts` does NOT exist.** The research prompt referenced
+  it, but free-tier / Pro gating actually lives in **`src/lib/plan.ts`**
+  (`canCreateItem`, `canCreateCollection`, `PRO_ITEM_TYPES`, `QuotaCheck`). Use
+  that.
+- **Lazy-memoized external clients.** `src/lib/stripe.ts` and `src/lib/r2.ts`
+  both follow the same shape: a module-level `let client`, an
+  `isXConfigured()` boolean guard, and a builder that constructs on first use
+  and never throws when the key is missing (so importing the module is cheap).
+  The OpenAI client must match this exactly.
+- **Server actions return a single result shape.** `src/actions/items.ts`
+  defines and every action returns
+  `ActionResult<T> = { success: true; data: T } | { success: false; error: string; issues?: … }`.
+- **Actions are guarded + validated the same way every time:** `"use server"`
+  → `await auth()` (401-style early return) → `schema.safeParse(input)` with
+  `z.flattenError(...).fieldErrors` on failure → delegate to a `src/lib/db/*`
+  query or external call → `try/catch` mapping thrown errors to a **generic**
+  user message while `console.error`-ing the real one.
+- **`isPro` is read from the DB per request**, never from the JWT/session:
+  `getCurrentUser()` in `src/lib/db/user.ts` returns it. `createItem` already
+  does `const isPro = user?.isPro ?? false`.
+- **Rate limiting is a registry + fail-open helper.** `src/lib/rate-limit.ts`
+  has a typed `RATE_LIMITS` map, `checkRateLimit(key, identifier)` backed by
+  Upstash, and **fails open** (allows through) when Upstash is unconfigured or
+  errors.
+- **Env feature flags are plain `process.env` reads.** `src/lib/features.ts`
+  `isEmailVerificationEnabled()` → `process.env.X?.trim().toLowerCase() === "true"`,
+  no imports (edge-safe).
+- **Validation lives in `src/lib/validations/*`** and is the source of truth;
+  client-side guards are UX only (`src/lib/validations/items.ts`).
+- **Vitest scope is deliberately narrow:** only `src/actions/*` and `src/lib/*`
+  (pure logic, mock the client with `vi.mock`). Components/pages are excluded.
+- **Markdown is already rendered safely** for note/prompt content via
+  `react-markdown` with **no `rehype-raw`** (no raw HTML) — the "Explain this
+  code" output reuses this renderer.
 
 ---
 
-## 1. Recommendation: SDK choice
+## 1. SDK choice & model
 
-The spec names **OpenAI `gpt-5-nano`** directly. Two credible ways to call it:
+**SDK:** the official [`openai`](https://github.com/openai/openai-node) Node
+package. It ships first-class TypeScript types, the **Responses API**, and Zod
+structured-output helpers (`openai/helpers/zod`).
 
-| Option | What it is | Verdict |
-| --- | --- | --- |
-| **A. Vercel AI SDK v6** (`ai` + provider string via AI Gateway) | TypeScript toolkit; `generateObject`/`generateText`/`streamText`; Zod-native structured output; provider-agnostic | ✅ **Recommended** |
-| B. Official `openai` SDK directly | `openai.responses.create(...)` with `response_format` JSON schema | Fine, more boilerplate |
-
-**Recommend Option A (AI SDK v6).** Reasons specific to this project:
-
-- **Structured output is first-class.** `generateObject({ schema: z.object({ tags: z.array(z.string()) }) })`
-  returns a typed, validated object — exactly what auto-tagging needs — with no manual JSON parsing
-  or `response_format` plumbing. The SDK converts the Zod schema to the model's native
-  structured-output API and validates + retries for you.
-- **Streaming is trivial.** `streamText` for code explanation; the client reads it with the SDK's
-  React hooks. Matches the "feels fast" UX the drawer wants.
-- **Platform-native on Vercel.** Per the session's Vercel guidance, prefer plain
-  `"provider/model"` strings routed through **AI Gateway** (observability, fallbacks, one key)
-  rather than hard-wiring `@ai-sdk/openai`. Use a bare provider string like
-  `"openai/gpt-5.4-nano"` unless you deliberately want direct provider wiring.
-- **Zod is already a dependency** (`zod@^4`), so schema definitions cost nothing new.
-
-**Model note (from OpenAI docs, July 2026):** `gpt-5-nano` still exists, but OpenAI now steers
-new cost/speed-sensitive workloads to **`gpt-5.4-nano`**. Nano is explicitly recommended for
-**summarization and classification** — i.e. our auto-tag + summary features. Keep the model id in
-**one env-driven constant** (`AI_MODEL`, default `openai/gpt-5.4-nano`) so it's a one-line swap.
-
-> If you'd rather not adopt AI Gateway yet, Option B with the `openai` package is a valid
-> fallback; the architecture below (Server Actions, gating, rate limiting, Zod) is identical —
-> only the "call the model" line changes.
-
-### Suggested dependencies
-
+```bash
+npm i openai
 ```
-npm i ai zod            # zod already present
-# provider string "openai/..." resolves through Vercel AI Gateway (no @ai-sdk/openai needed)
-# OR, for Option B:  npm i openai
-```
+
+**Model:** `gpt-5-nano` per `project-overview.md` §6 — the fastest/cheapest GPT-5
+tier, well-suited to classification, extraction, summarization, and short
+explanations.
+
+- Pricing: **~$0.05 / 1M input tokens, ~$0.40 / 1M output tokens**.
+- Context window: **400K tokens**; supports structured outputs + streaming.
+
+> ⚠️ **Do not hardcode the model id.** Newer/cheaper-per-quality variants already
+> exist (e.g. `gpt-5.4-nano`, `gpt-5.6`). Read the model from an env var
+> (`OPENAI_MODEL`, defaulting to `gpt-5-nano`) so it can be bumped without a code
+> change — the same reason `stripe.ts` reads price ids from env.
 
 ---
 
 ## 2. Configuration & the AI client
 
-Create `src/lib/ai/client.ts` — a lazy singleton mirroring `prisma.ts` / `rate-limit.ts`:
+New file `src/lib/openai.ts`, following `src/lib/stripe.ts` line for line:
 
-- Read the API key **once** from env (`AI_GATEWAY_API_KEY` for Gateway, or `OPENAI_API_KEY` for
-  direct). **Never** expose it to the client — AI calls run only in Server Actions / route
-  handlers (server-only modules).
-- Export a small typed wrapper, e.g. `generateTags(text)`, `summarize(text)`,
-  `explainCode(code, language)`, `optimizePrompt(text)` — so callers never touch the model id or
-  schema directly and the model is swappable in one place.
-- Centralize the model id: `const AI_MODEL = process.env.AI_MODEL ?? "openai/gpt-5.4-nano"`.
+```ts
+import OpenAI from "openai";
 
-**New env vars** to add to `.env` (real) and `.env.example` (documented, per the repo's
-un-ignore-`.env.example` convention):
+// Server-side OpenAI client for Pro AI features. Mirrors the lazy pattern in
+// src/lib/stripe.ts and src/lib/r2.ts: built on first use and memoized, so
+// importing this module is cheap and never throws when OPENAI_API_KEY is unset.
+// Callers guard with isOpenAIConfigured() before using openai().
 
+let client: OpenAI | null = null;
+
+/** Whether the OpenAI API key needed to talk to the API is present. */
+export function isOpenAIConfigured(): boolean {
+  return Boolean(process.env.OPENAI_API_KEY);
+}
+
+/** Lazily build (and memoize) the OpenAI client. */
+export function openai(): OpenAI {
+  if (client) return client;
+  client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY ?? "" });
+  return client;
+}
+
+/** The chat model id, overridable via env (defaults to the cheap nano tier). */
+export function aiModel(): string {
+  return process.env.OPENAI_MODEL?.trim() || "gpt-5-nano";
+}
 ```
-# AI features
-AI_ENABLED="false"                 # master feature flag (mirror EMAIL_VERIFICATION_ENABLED)
-AI_MODEL="openai/gpt-5.4-nano"
-AI_GATEWAY_API_KEY="..."           # if using Vercel AI Gateway (Option A)
-# OPENAI_API_KEY="..."             # if calling OpenAI directly (Option B)
+
+Plus an env feature flag mirroring `src/lib/features.ts` (lets AI be turned off
+globally without unsetting the key):
+
+```ts
+// in src/lib/features.ts
+export function isAiEnabled(): boolean {
+  return process.env.AI_FEATURES_ENABLED?.trim().toLowerCase() === "true";
+}
 ```
 
-Add `isAiEnabled()` to `src/lib/features.ts` (same shape as `isEmailVerificationEnabled()`).
-The AI client should **fail gracefully** when unconfigured (return a friendly error, never throw
-an unhandled 500) — matching the fail-open ethos of `rate-limit.ts` (though AI should *fail
-closed*: no key → feature unavailable, not silently "allowed").
+**Env vars** (add to `.env` and document in `.env.example`):
+
+```bash
+# AI features (Pro) — server-only, never NEXT_PUBLIC_*
+OPENAI_API_KEY="sk-..."
+OPENAI_MODEL="gpt-5-nano"       # override to bump the model without a code change
+AI_FEATURES_ENABLED="false"     # default off until a key is provisioned
+```
 
 ---
 
-## 3. Server Action patterns (the first in this repo)
+## 3. Server Action patterns
 
-Per `context/coding-standards.md`: **Server Actions for form submissions and simple mutations**;
-API routes only for webhooks/uploads/streaming-with-status. AI actions are simple request/response
-mutations → **Server Actions**, except code-explanation streaming (see §4).
+The four features are server actions in a new `src/actions/ai.ts`, each
+following `src/actions/items.ts` to the letter (`"use server"`, `auth()` guard,
+Zod parse, delegate, try/catch, `ActionResult<T>`). Actions — not API routes —
+because there's no client-side `fetch` needed and no webhook/streaming
+requirement for the short outputs (see §4).
 
-Create `src/actions/ai.ts` (`"use server"`), one action per feature. Every action follows the
-**same guard pipeline**, in this order (cheapest checks first):
-
-```
-1. isAiEnabled()            → feature flag off?     → { success:false, error:"AI is unavailable" }
-2. getCurrentUser()         → no session?           → { success:false, error:"Not signed in" }
-3. user.isPro               → free user?            → { success:false, error:"Upgrade to Pro", code:"pro_required" }
-4. Zod parse the input      → invalid?              → { success:false, error: <first issue> }
-5. checkRateLimit(...)      → throttled?            → { success:false, error:"Too many requests", code:"rate_limited" }
-6. call the model (try/catch)                        → { success:true, data } | { success:false, error }
-```
-
-Return the **`{ success, data, error }`** shape the codebase already uses everywhere. Skeleton:
+**Worked example — auto-tag (end to end):**
 
 ```ts
-// src/actions/ai.ts
 "use server";
 
 import { z } from "zod";
-import { headers } from "next/headers";
+import { auth } from "@/auth";
+import type { ActionResult } from "@/actions/items";
 import { getCurrentUser } from "@/lib/db/user";
 import { isAiEnabled } from "@/lib/features";
-import { checkAiRateLimit } from "@/lib/rate-limit"; // new helper, see §6
+import { isOpenAIConfigured } from "@/lib/openai";
+import { checkRateLimit } from "@/lib/rate-limit";
+import { suggestTags } from "@/lib/ai/tags";           // the OpenAI call (see §5)
 import { autoTagSchema } from "@/lib/validations/ai";
-import { generateTags } from "@/lib/ai/client";
 
-export async function suggestTags(input: unknown) {
-  if (!isAiEnabled()) return { success: false, error: "AI features are unavailable." } as const;
+export async function suggestItemTags(
+  input: unknown,
+): Promise<ActionResult<{ tags: string[] }>> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { success: false, error: "You must be signed in." };
+  }
 
+  // Pro gate — always re-read isPro from the DB, never trust the client.
   const user = await getCurrentUser();
-  if (!user) return { success: false, error: "You must be signed in." } as const;
-  if (!user.isPro)
-    return { success: false, error: "Upgrade to Pro to use AI features.", code: "pro_required" } as const;
+  if (!user?.isPro) {
+    return { success: false, error: "AI features are available on Pro." };
+  }
+
+  if (!isAiEnabled() || !isOpenAIConfigured()) {
+    return { success: false, error: "AI features are not available right now." };
+  }
 
   const parsed = autoTagSchema.safeParse(input);
-  if (!parsed.success)
-    return { success: false, error: parsed.error.issues[0]?.message ?? "Invalid input." } as const;
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: "Please check the highlighted fields.",
+      issues: z.flattenError(parsed.error).fieldErrors,
+    };
+  }
 
-  const rl = await checkAiRateLimit("aiTag", user.id);
-  if (!rl.success)
-    return { success: false, error: "Too many requests. Try again shortly.", code: "rate_limited" } as const;
+  // Per-user rate limit — AI calls cost real money (see §6).
+  const { success: allowed } = await checkRateLimit("ai", session.user.id);
+  if (!allowed) {
+    return { success: false, error: "You're doing that too fast. Try again shortly." };
+  }
 
   try {
-    const tags = await generateTags(parsed.data.content);
-    return { success: true, data: { tags } } as const;
-  } catch (err) {
-    console.error("suggestTags failed:", err);
-    return { success: false, error: "Could not generate tags. Please try again." } as const;
+    const tags = await suggestTags(parsed.data);       // returns string[]
+    return { success: true, data: { tags } };
+  } catch (error) {
+    console.error("AI auto-tag failed:", error);
+    return { success: false, error: "Couldn't generate tags. Please try again." };
   }
 }
 ```
 
-Keep each action **under 50 lines** (coding standard). Factor the guard pipeline (steps 1–5) into
-a shared `requireProAiUser()` helper returning `{ ok:true, user } | { ok:false, response }` so each
-action body is just parse → rate-limit → call.
-
-**Auto-tagging structured output** — with AI SDK v6:
-
-```ts
-// inside src/lib/ai/client.ts
-const { object } = await generateObject({
-  model: AI_MODEL,
-  schema: z.object({ tags: z.array(z.string().min(1).max(30)).max(8) }),
-  prompt: `Suggest up to 8 short, lowercase topic tags for this content...\n\n${text}`,
-});
-return object.tags;
-```
-
-Structured Outputs guidance (OpenAI, 2026): **don't** describe the JSON shape in the prompt — let
-the schema drive it; describe only the *task*. For nano-class models, be **explicit and a bit
-verbose** — they follow instructions well but won't infer missing steps.
+`explainCode`, `summarizeItem`, and `optimizePrompt` are the same skeleton with
+different schemas + `src/lib/ai/*` callers. The Pro + AI-enabled + rate-limit
+preamble is identical enough to extract into a small `guardAi(session)` helper.
 
 ---
 
 ## 4. Streaming vs non-streaming
 
-| Feature | Mode | Why |
-| --- | --- | --- |
-| Auto-tagging | **Non-streaming** (`generateObject`) | Structured array; nothing to stream; short |
-| AI summary | Non-streaming (short) | A few sentences; simpler UX; can stream later |
-| **Code explanation** | **Streaming** (`streamText`) | Longer output; token-by-token feels fast in the drawer |
-| Prompt optimizer | Non-streaming | Returns a rewritten block; show on complete |
+**Recommendation: non-streaming for all four.** Tags, summaries, and prompt
+rewrites are short; a single `responses.parse` (or `responses.create`) call
+returns fast and keeps the clean `ActionResult<T>` contract. Server actions also
+don't stream tokens to the client well — that needs a route handler.
 
-**Streaming implementation** — streaming can't ride a plain Server Action return value, so use a
-**route handler** for code explanation:
-
-- `POST src/app/api/ai/explain/route.ts` → runs the **same guard pipeline** (§3), then
-  `return streamText({ model, prompt }).toUIMessageStreamResponse()` (AI SDK v6).
-- Client component consumes it with the AI SDK React hooks (progressive render + a stop button).
-- All other features stay as Server Actions called from client components.
-
-This split matches the coding standard exactly: "Use API routes when you need … streaming /
-long-running operations; otherwise Server Actions."
+- **Non-streaming** (this plan): `await openai().responses.parse(...)`, one round
+  trip, structured result, easy error handling.
+- **Streaming** (optional later polish, only for "Explain this code" if
+  explanations get long): use a **route handler** (`src/app/api/ai/explain/route.ts`)
+  with `openai().responses.stream(...)` and pipe tokens to the client — do **not**
+  try to stream from a server action. Defer unless the UX demands it.
 
 ---
 
-## 5. Pro gating patterns
+## 5. Structured output (the OpenAI call)
 
-**Source of truth:** `User.isPro` via `getCurrentUser()` (`src/lib/db/user.ts`). Note the repo's
-current stance (§7 of the overview): *"During development, all users can access everything."* So:
+Use the **Responses API** with a Zod schema via `openai/helpers/zod`. Example
+for auto-tag (`src/lib/ai/tags.ts`):
 
-- **Server-side (authoritative):** every AI action/route checks `user.isPro` (step 3 above) and
-  returns `code: "pro_required"` when false. This is the real gate — never trust the client.
-- **Feature flag:** gate the whole subsystem behind `AI_ENABLED` so it can ship dark.
-- **Dev override (optional):** to honor "everything unlocked in dev," you *could* let
-  `isProOrDev(user)` treat any signed-in user as Pro while `AI_ENABLED` is on in non-prod. Decide
-  deliberately — the safer default is to gate strictly on `isPro` even in dev so the gate is
-  actually exercised.
-- **This is the moment to create `src/lib/usage-limits.ts`** (the missing file the prompt cited).
-  Give it a typed registry mirroring `RATE_LIMITS`:
+```ts
+import { zodTextFormat } from "openai/helpers/zod";
+import { z } from "zod";
+import { openai, aiModel } from "@/lib/openai";
 
-  ```ts
-  // src/lib/usage-limits.ts
-  export const PLAN_LIMITS = {
-    free: { items: 50, collections: 3, ai: false, fileUploads: false },
-    pro:  { items: Infinity, collections: Infinity, ai: true, fileUploads: true },
-  } as const;
+// OpenAI strict structured output: every field required, no extra properties.
+// Prefer .nullable() over .optional()/.nullish() — optional fields break strict
+// schemas and cause "no object generated" errors.
+const TagResult = z.object({
+  tags: z.array(z.string()).max(8),
+});
 
-  export function canUseAi(user: { isPro: boolean }): boolean {
-    return PLAN_LIMITS[user.isPro ? "pro" : "free"].ai;
-  }
-  ```
+export async function suggestTags(input: {
+  title: string;
+  content: string;
+}): Promise<string[]> {
+  const response = await openai().responses.parse({
+    model: aiModel(),
+    max_output_tokens: 120,                 // cap output — cost control (§7)
+    input: [
+      {
+        role: "system",
+        content:
+          "You suggest 3–6 short, lowercase, single-or-two-word tags for a " +
+          "developer's saved snippet/note. Return tags only.",
+      },
+      {
+        role: "user",
+        content: `Title: ${input.title}\n\nContent:\n${input.content}`,
+      },
+    ],
+    text: { format: zodTextFormat(TagResult, "tags") },
+  });
 
-  This also satisfies the §9 open note ("build the 50-item / 3-collection checks now behind a
-  flag") in the same place, so AI gating and quota gating share one module.
+  return response.output_parsed?.tags ?? [];
+}
+```
 
-**Client-side (UX only):** thread `user.isPro` (already available via `getCurrentUser()` in server
-components) to show an **"Upgrade to Pro"** affordance instead of the AI button for free users.
-Cosmetic — the server check is what protects the API.
+**Strict-schema gotchas** (documented by OpenAI + the AI ecosystem):
+
+- The schema is compiled with `strict: true` → **every property must be
+  `required`** and the object must have `additionalProperties: false`. Zod
+  `.optional()` violates this — use **`.nullable()`** and handle `null`.
+- Keep schemas flat and small; deeply nested/recursive schemas are rejected or
+  slow.
+- `response.output_parsed` is typed from the Zod schema; treat a `null`/empty
+  result as a soft failure (return `[]` / surface a retry), not a crash.
+
+The equivalent raw form (no Zod helper) is `text.format` with a hand-written
+`{ type: "json_schema", name, strict: true, schema }` — the helper just
+generates that from Zod.
 
 ---
 
 ## 6. Error handling & rate limiting
 
-**Error handling** — reuse the established discipline:
-
-- `try/catch` around every model call; log the real error server-side, return a **generic,
-  friendly** message to the client (never leak provider errors or the prompt).
-- Distinguish failure classes with a `code` field so the UI can react:
-  `pro_required`, `rate_limited`, `ai_unavailable`, generic.
-- Surface via **toast** (the app's `toastManager` / Base UI toaster) — consistent with existing
-  flows.
-
-**Rate limiting** — **extend `src/lib/rate-limit.ts`**, don't reinvent it. AI calls cost money, so
-limits matter more here than for auth. Add AI entries to the `RATE_LIMITS` registry:
+**Errors** — the OpenAI SDK throws typed errors; catch and map to generic
+messages (never leak provider detail to the user):
 
 ```ts
-// additions to RATE_LIMITS in src/lib/rate-limit.ts
-aiTag:      { limit: 20, window: "1 h", prefix: "rl:ai:tag" },
-aiSummary:  { limit: 20, window: "1 h", prefix: "rl:ai:summary" },
-aiExplain:  { limit: 20, window: "1 h", prefix: "rl:ai:explain" },
-aiPrompt:   { limit: 20, window: "1 h", prefix: "rl:ai:prompt" },
+import OpenAI from "openai";
+
+try {
+  // ... openai() call
+} catch (error) {
+  if (error instanceof OpenAI.RateLimitError) {
+    // 429 from OpenAI — advise retry (consider short exponential backoff)
+  } else if (error instanceof OpenAI.APIConnectionError) {
+    // network / timeout
+  } else if (error instanceof OpenAI.APIError) {
+    // other 4xx/5xx — inspect error.status
+  }
+  console.error("AI call failed:", error);
+  // → return { success: false, error: "Couldn't complete that. Please try again." }
+}
 ```
 
-- **Key by user id** (`user.id`), not IP — AI is behind auth, so per-user budgets are correct and
-  fairer than per-IP.
-- Reuse `checkRateLimit(key, identifier)` as-is (it already returns `{ success, remaining, reset }`).
-- **One difference from auth:** auth limiters **fail open** (a Redis outage must not lock people
-  out). For AI, consider **failing closed** or at least keeping the fail-open but relying on the
-  provider's own limits as a backstop — an AI outage of the limiter shouldn't enable unbounded
-  spend. Document the choice; simplest is to keep fail-open and add a hard provider-side cap.
-- For streaming (route handler), also return the existing `rateLimitResponse()` 429 with
-  `Retry-After` when throttled.
+**Rate limiting** — add an `ai` entry to the `RATE_LIMITS` registry in
+`src/lib/rate-limit.ts`, keyed by **userId** (AI calls cost money, unlike the
+existing IP-keyed auth limiters):
+
+```ts
+// in RATE_LIMITS
+ai: { limit: 20, window: "1 h", prefix: "rl:ai" },
+```
+
+Then `await checkRateLimit("ai", session.user.id)` in each action (shown in §3).
+It **fails open** if Upstash is down — acceptable, and consistent with the auth
+limiters. This is a burst/abuse guard; hard monthly quotas are a separate
+concern (see §7).
 
 ---
 
 ## 7. Cost optimization
 
-`gpt-5.4-nano` is already the cheapest/fastest tier — the right default. Beyond model choice:
-
-- **Prompt caching** — nano supports it. Keep the **system/instruction prefix identical** across
-  calls of the same feature (put the static rubric first, the variable content last) so the
-  provider caches the prefix. Big win for auto-tag/summarize run repeatedly.
-- **Cap `maxOutputTokens`** per feature (tags need very few; summaries a few hundred; explanations
-  more). Small caps directly cap cost and latency.
-- **Truncate/limit input** — enforce a max input length in the Zod schema (e.g. reject or trim
-  content over N chars) so a user can't paste a megabyte into the summarizer. Protects cost *and*
-  is input sanitization (§8).
-- **Debounce auto-tag** — if triggered on content change, debounce; ideally only run on an explicit
-  "Suggest tags" click, not on every keystroke.
-- **Cache results where stable** — the same snippet's explanation doesn't change; a per-item cached
-  `aiSummary` / `aiExplanation` column (or a keyed cache) avoids re-billing repeat opens. (Schema
-  addition — would need a **migration**, never `db push`.)
-- **Batch API** — for any future bulk "tag my whole library" job, OpenAI's Batch API is ~half price
-  for non-interactive work.
-- **Rate limits (§6)** are also a cost control, not just abuse control.
+- **`gpt-5-nano` as the default** — cheapest tier; only escalate a specific
+  feature to a bigger model if quality demands it (env-configurable per §1).
+- **Cap input** — truncate item content before prompting (e.g. first ~4–8K
+  chars). Long files blow up input cost for little gain on tag/summary tasks.
+- **Cap output** — `max_output_tokens` per feature (tags ~120, summary ~200,
+  explain ~800). Output tokens are 8× the input price.
+- **Tight prompts** — short system prompts; don't restate the whole app.
+- **Per-user quota** — optionally track monthly AI calls (a counter keyed by
+  `userId:YYYY-MM`, e.g. in Upstash) and block past a Pro allowance; distinct
+  from the per-hour burst limiter in §6.
+- **Skip redundant calls** — don't re-summarize/re-tag unchanged content; let
+  the user trigger AI explicitly rather than auto-firing on every edit.
 
 ---
 
-## 8. UI patterns for AI features
+## 8. Pro gating patterns
 
-Match the app's existing feel (drawer-based items, toasts, loading skeletons, ShadCN/Base UI):
+- Every AI action **re-reads `isPro` via `getCurrentUser()`** and returns an
+  upgrade-style error when false (shown in §3) — never trust a client flag. This
+  is the same discipline `createItem` uses.
+- Extend **`src/lib/plan.ts`** with a small helper so the gate reads uniformly,
+  e.g.:
 
-- **Loading states** — a spinner/shimmer on the AI button while pending; for streaming code
-  explanation, render tokens progressively (skeleton → streaming text) with a **Stop** button.
-- **Accept / reject suggestions** — auto-tag is the key case: show suggested tags as **dismissible
-  chips** with **"Add"** per chip (or "Add all" / "Dismiss"). Never auto-apply — the user curates.
-  Summaries/optimized prompts get **"Insert"** / **"Copy"** / **"Regenerate"** actions; don't
-  overwrite the user's content silently.
-- **Regenerate** — cheap on nano; offer it, but count it against the rate limit.
-- **Empty/again states** — "No suggestions" and a retry path on error (toast + inline).
-- **Pro affordance** — free users see an "Upgrade to Pro" prompt where the AI action would be
-  (§5), not a dead button.
-- **Optimistic-but-safe** — since these are Server Actions, use `useTransition`/pending state; don't
-  block the whole drawer, just the AI control.
+  ```ts
+  /** AI features are Pro-only (see project-overview §7). */
+  export function canUseAi(isPro: boolean): boolean {
+    return isPro;
+  }
+  ```
 
-Place AI controls **inside the item drawer** (where content is edited/read) — consistent with
-"items should be quick to create and open inside a drawer."
-
----
-
-## 9. Security considerations
-
-- **API key handling** — key lives **only** in server env, read in `src/lib/ai/client.ts` (a
-  server-only module). Never imported into a client component; never returned to the browser; never
-  logged. Keep it out of `NEXT_PUBLIC_*`. Same discipline as `DATABASE_URL` / Upstash tokens today.
-- **Keep AI off the edge/proxy bundle** — like `rate-limit.ts` and `prisma.ts`, the AI client must
-  only be imported by Server Actions / Node route handlers, **never** by `src/proxy.ts` or
-  `src/auth.config.ts`, so the edge bundle stays clean (the repo already guards this boundary
-  carefully).
-- **Input validation & sanitization** — Zod-validate every AI input (`src/lib/validations/ai.ts`):
-  enforce type, non-empty, and a **max length** (cost + abuse). Treat all content as untrusted.
-- **Prompt-injection awareness** — user content is the data being summarized/explained, so treat it
-  as **data, not instructions**: keep the system/instruction prompt separate from user content, and
-  never let AI output trigger side effects (it only ever returns suggestions the user must accept).
-  Don't feed AI output into anything executable.
-- **Output handling** — AI returns markdown/text rendered in the UI; render it safely (the existing
-  markdown pipeline / escaping) — don't `dangerouslySetInnerHTML` raw model output.
-- **Authz on every call** — session + `isPro` checked server-side on **every** action and the
-  streaming route (§3, §5). No AI endpoint is reachable unauthenticated.
-- **Rate limiting** (§6) — per-user, as brute-force/abuse/cost protection.
-- **No PII to logs** — log error *types*, not prompt contents.
+  (`PRO_ITEM_TYPES` already models Pro-gated capabilities in this file, so AI
+  gating belongs alongside it.)
+- **UI:** free users see the AI affordances **disabled with a "Pro" badge**
+  linking to `/upgrade`, exactly like the New Item dialog's file/image chips
+  already do. The server action is still the enforcement point; the disabled UI
+  is UX.
 
 ---
 
-## 10. Suggested file layout (all new)
+## 9. UI patterns for AI features
+
+- **Loading states** — a spinner/pending state on the trigger button while the
+  action runs (the actions are `async`; use `useTransition` or local pending
+  state, as the existing forms do).
+- **Accept / reject suggestions** — AI never writes silently:
+  - **Auto-tag:** show suggested tags as chips the user can add/remove, then the
+    existing item-edit save writes them (reuse `updateItem`). Nothing persists
+    until the user confirms.
+  - **Prompt optimizer:** show the rewritten prompt in a diff/preview with
+    "Replace" / "Discard"; on accept, write via `updateItem`.
+  - **Summary / Explain:** render read-only in a drawer panel (Explain uses the
+    existing **sanitized Markdown renderer** — see §10).
+- **Toasts** — success/error via `src/lib/toast.ts` (`toastManager.add`),
+  matching every other mutation in the app.
+- Wire these into the existing **item drawer** (`ItemDrawer*` components) and its
+  edit mode rather than new pages.
+
+---
+
+## 10. Security considerations
+
+- **API key is server-only.** `OPENAI_API_KEY` is read only in
+  `src/lib/openai.ts`, imported only by server actions / server code. **Never**
+  `NEXT_PUBLIC_*`, never referenced in a client component. Server actions run on
+  the server, so the key never reaches the browser.
+- **Bound user input.** Truncate/normalize item content before it becomes a
+  prompt (also a cost control). Very large inputs should be rejected by the Zod
+  schema (`.max(...)`).
+- **Treat model output as untrusted.** Render "Explain this code" and summaries
+  through the **existing `react-markdown` renderer with no `rehype-raw`** (no raw
+  HTML execution) — the same safe path note/prompt content already uses. Don't
+  `dangerouslySetInnerHTML` model output.
+- **Prompt injection.** Item content is attacker-controllable (a user could
+  paste "ignore previous instructions…"). Keep the system prompt authoritative,
+  never let model output trigger side effects automatically (accept/reject gate
+  in §9 is the mitigation), and don't feed model output back into privileged
+  operations.
+- **Own-data only.** AI actions operate on the signed-in user's own items;
+  reuse the owner-scoped queries (`getItemDetail(id, userId)`) if an action
+  loads an item by id.
+
+---
+
+## 11. Suggested file layout (all new)
 
 ```
-src/
-  actions/
-    ai.ts                     # "use server" — suggestTags, summarize, optimizePrompt (Server Actions)
-  app/api/ai/
-    explain/route.ts          # streaming code explanation (route handler)
-  lib/
-    ai/
-      client.ts               # lazy singleton + generateTags/summarize/explainCode/optimizePrompt
-      prompts.ts              # the four prompt/instruction strings (static prefixes for caching)
-    validations/
-      ai.ts                   # Zod schemas (with max-length caps)
-    usage-limits.ts           # NEW — PLAN_LIMITS registry + canUseAi() (also covers 50-item/3-collection note)
-    features.ts               # + isAiEnabled()
-    rate-limit.ts             # + aiTag/aiSummary/aiExplain/aiPrompt entries
-  components/
-    ai/                       # AiTagSuggestions, AiSummaryButton, CodeExplainer (streaming), PromptOptimizer
+src/lib/openai.ts               # lazy client + isOpenAIConfigured() + aiModel()
+src/lib/features.ts             # + isAiEnabled()            (edit existing)
+src/lib/plan.ts                 # + canUseAi()               (edit existing)
+src/lib/rate-limit.ts           # + RATE_LIMITS.ai           (edit existing)
+src/lib/validations/ai.ts       # Zod input schemas per feature
+src/lib/ai/tags.ts              # suggestTags()   — OpenAI call + output schema
+src/lib/ai/summary.ts           # summarize()
+src/lib/ai/explain.ts           # explainCode()
+src/lib/ai/optimize.ts          # optimizePrompt()
+src/lib/ai/prompts.ts           # (optional) shared system-prompt strings
+src/actions/ai.ts               # the four "use server" actions (ActionResult<T>)
 ```
 
-**Migrations reminder:** if you add cached `aiSummary`/`aiExplanation` columns (§7), do it with
-`prisma migrate dev` — **never** `db push` (project policy), against the Neon **development**
-branch.
+**Tests** (Vitest scope = actions + lib only, `vi.mock` the OpenAI client):
+
+```
+src/actions/ai.test.ts          # unauth guard, non-Pro guard, validation issues,
+                                #   rate-limit block, success, thrown → generic
+src/lib/validations/ai.test.ts  # each input schema
+src/lib/ai/*.test.ts            # output-schema mapping with a mocked client
+```
 
 ---
 
-## 11. Open questions to resolve before building
+## 12. Open questions to resolve before building
 
-1. **AI Gateway vs direct OpenAI** — adopt Vercel AI Gateway (Option A, recommended) or wire
-   `openai` directly (Option B)? Affects only env + the client module.
-2. **Model id** — `gpt-5.4-nano` (OpenAI's current nano recommendation) vs the spec's literal
-   `gpt-5-nano`? Recommend the former, pinned via `AI_MODEL`.
-3. **Dev gating** — honor "everything unlocked in dev" for AI, or gate strictly on `isPro` so the
-   gate is exercised? (Recommend strict.)
-4. **Rate-limit failure mode** — fail-open (like auth) or fail-closed for cost safety?
-5. **Result caching** — worth a schema column now, or defer? (Defer unless repeat-open cost is real.)
-6. **Trigger for auto-tag** — explicit button (recommended) vs on-change debounce.
+- **Model pin vs. latest** — ship `gpt-5-nano` (env-overridable) or start on a
+  newer nano variant? Default: pin `gpt-5-nano`, override via `OPENAI_MODEL`.
+- **Do summaries persist?** Ephemeral (regenerate on demand) or a new
+  `Item.summary` column? Persisting means a **Prisma migration** (never
+  `db push`) and cache-invalidation on edit. Default: ephemeral first.
+- **Streaming for Explain** — worth a route handler now, or non-streaming until
+  the UX demands it? Default: non-streaming (§4).
+- **Monthly AI quota** — is the per-hour burst limiter (§6) enough, or does Pro
+  need a hard monthly cap (§7)? Needs a product decision + number.
+- **Which features ship first?** Auto-tag is the lowest-risk, highest-value
+  starting point (structured output, accept/reject already fits the edit flow).
 
 ---
 
 ## Sources
 
-- [GPT-5 nano Model — OpenAI API](https://developers.openai.com/api/docs/models/gpt-5-nano)
-- [GPT-5.4 nano Model — OpenAI API](https://developers.openai.com/api/docs/models/gpt-5.4-nano)
-- [Structured model outputs — OpenAI API](https://developers.openai.com/api/docs/guides/structured-outputs)
-- [Prompt guidance — OpenAI API](https://developers.openai.com/api/docs/guides/prompt-guidance)
-- [Get started with GPT-5 — AI SDK cookbook](https://ai-sdk.dev/cookbook/guides/gpt-5)
-- [AI SDK — Vercel docs](https://vercel.com/docs/ai-sdk)
-- [AI SDK 6 — Vercel blog](https://vercel.com/blog/ai-sdk-6)
-- [vercel/ai — GitHub](https://github.com/vercel/ai)
-- Codebase: `src/lib/rate-limit.ts`, `src/lib/features.ts`, `src/lib/prisma.ts`,
-  `src/lib/db/user.ts`, `src/lib/validations/auth.ts`, `context/project-overview.md` (§3.F, §6, §7, §9),
-  `context/coding-standards.md`
+- [GPT-5 nano model — OpenAI API](https://developers.openai.com/api/docs/models/gpt-5-nano)
+- [OpenAI API pricing](https://developers.openai.com/api/docs/pricing)
+- [Structured outputs / Responses API `text.format`](https://developers.openai.com/api/docs/guides/migrate-to-responses)
+- [OpenAI error codes & handling](https://developers.openai.com/api/docs/guides/error-codes)
+- [`openai` Node SDK](https://github.com/openai/openai-node) — `openai/helpers/zod` (`zodTextFormat`, `responses.parse`)
+- Codebase patterns: `src/actions/items.ts`, `src/lib/plan.ts`, `src/lib/stripe.ts`, `src/lib/r2.ts`, `src/lib/rate-limit.ts`, `src/lib/features.ts`, `src/lib/validations/items.ts`, `src/lib/db/user.ts`
