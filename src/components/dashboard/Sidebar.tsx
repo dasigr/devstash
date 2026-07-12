@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Home,
@@ -53,7 +54,14 @@ function SidebarContent({
           collapsed ? "justify-center px-0" : "px-4"
         )}
       >
-        <Logo collapsed={collapsed} />
+        <Link
+          href="/dashboard"
+          aria-label="DevStash dashboard"
+          onClick={onNavigate}
+          className="rounded-lg transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+        >
+          <Logo collapsed={collapsed} />
+        </Link>
         {onClose && (
           <Button
             variant="ghost"
