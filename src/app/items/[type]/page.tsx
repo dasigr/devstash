@@ -53,6 +53,13 @@ export default async function ItemsByTypePage({
   const currentUser = await getCurrentUser();
   if (!currentUser) redirect("/sign-in");
 
+  // File & image are Pro-only listings — send free users to upgrade instead.
+  // getSystemItemType is cache()'d (and reused by getItemsByType below), so this
+  // adds no extra query; a bogus slug resolves to null and falls through to the
+  // 404 handling further down.
+  const requestedType = await getSystemItemType(type);
+  if (requestedType?.isPro && !currentUser.isPro) redirect("/upgrade");
+
   const [listing, sidebarItemTypes, sidebarCollections, editorPreferences] =
     await Promise.all([
       getItemsByType(type, currentUser.id, requestedPage),
