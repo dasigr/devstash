@@ -193,9 +193,9 @@ export function CreateItemDialog() {
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger
         render={
-          <Button>
+          <Button aria-label="New Item">
             <Plus className="size-4" />
-            New Item
+            <span className="hidden sm:inline">New Item</span>
           </Button>
         }
       />

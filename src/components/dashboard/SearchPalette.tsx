@@ -16,6 +16,7 @@ import type { SearchData } from "@/lib/db/search";
 import { buildSearchIndex, scoreFields } from "@/lib/search";
 import { useItemDrawer } from "@/components/dashboard/item-drawer-context";
 import { ItemTypeIcon } from "@/components/dashboard/ItemTypeIcon";
+import { buttonVariants } from "@/components/ui/button";
 import {
   CommandDialog,
   CommandEmpty,
@@ -116,13 +117,10 @@ export function SearchPalette() {
         type="button"
         onClick={() => setOpen(true)}
         aria-label="Search"
-        className="relative flex h-8 w-full max-w-md items-center gap-2 rounded-lg border border-input bg-transparent px-2.5 text-sm text-muted-foreground transition-colors outline-none hover:border-ring/50 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
+        title={`Search (${isMac ? "⌘K" : "Ctrl K"})`}
+        className={buttonVariants({ variant: "ghost", size: "icon" })}
       >
-        <Search className="size-4 shrink-0" />
-        <span className="truncate">Search items, tags, collections…</span>
-        <kbd className="ml-auto hidden shrink-0 rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground sm:inline-block">
-          {isMac ? "⌘K" : "Ctrl K"}
-        </kbd>
+        <Search className="size-4" />
       </button>
 
       <CommandDialog
