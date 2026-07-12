@@ -32,6 +32,7 @@ export const config = {
     "/dashboard/:path*",
     "/profile/:path*",
     "/settings/:path*",
+    "/upgrade/:path*",
     "/items/:path*",
     "/collections/:path*",
     "/favorites/:path*",
