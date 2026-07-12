@@ -2,15 +2,19 @@
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+- Free users see a subtle **Upgrade** button (ghost variant) in the dashboard `TopBar`; Pro users don't.
+- The button links to a new protected **`/upgrade`** page (not straight to Stripe Checkout).
+- `/upgrade` presents the Pro plan and features, much like the homepage pricing area, and lets the user pick **$8/mo** or **$72/yr**, then click to upgrade — starting Stripe Checkout from there.
 
 ## Notes
 
-<!-- Additional context, constraints, or details from spec -->
+- Checkout reuses the existing `POST /api/stripe/checkout` (redirect to the returned Stripe URL); success/cancel still return to `/settings`.
+- `/upgrade` uses app theme tokens (not the marketing `--m-*` palette) for consistency inside the authenticated app.
+- Pro users hitting `/upgrade` are redirected to `/settings` (nothing to upgrade); add `/upgrade` to the proxy matcher.
 
 ## History
 

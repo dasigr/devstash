@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Star } from "lucide-react";
+import { Sparkles, Star } from "lucide-react";
 
 import { buttonVariants } from "@/components/ui/button";
 import { SidebarToggle } from "@/components/dashboard/SidebarToggle";
@@ -21,6 +21,15 @@ export function TopBar({ isPro = false }: { isPro?: boolean }) {
       <SidebarToggle />
 
       <div className="ml-auto flex shrink-0 items-center gap-2">
+        {!isPro && (
+          <Link
+            href="/upgrade"
+            className={buttonVariants({ variant: "ghost", size: "sm" })}
+          >
+            <Sparkles className="size-4" />
+            Upgrade
+          </Link>
+        )}
         <SearchPalette />
         <Link
           href="/favorites"
