@@ -1,16 +1,27 @@
-# Current Feature
+# Current Feature: Stripe Integration — Integration & UI (Phase 2)
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+- Users can upgrade to Pro via hosted Stripe Checkout ($8/mo or $72/yr) and manage/cancel via the Billing Portal.
+- A signature-verified webhook (`POST /api/stripe/webhook`) is the single source of truth that flips `isPro` / `stripeSubscriptionId`.
+- Free-tier limits are actually enforced: 50 items, 3 collections, and file/image uploads are Pro-only.
+- All gating is defense-in-depth: a client UX hint **and** a server-side source-of-truth rejection.
+- `/settings` gains a Billing section (upgrade buttons for free users; "Manage billing" for Pro).
+- Full unit-test / typecheck / lint / build suite stays green; three new `ƒ` Stripe routes; `ƒ Proxy (Middleware)` intact.
 
 ## Notes
 
-<!-- Additional context, constraints, or details from spec -->
+- Builds on Phase 1 (merged): `stripe()` client + guards (`src/lib/stripe.ts`) and `canCreateItem`/`canCreateCollection`/`PRO_ITEM_TYPES` (`src/lib/plan.ts`). Billing columns already on `User` — **no migration**; `stripe` SDK already a dep; five `STRIPE_*` vars already in `.env.example`.
+- **Three API routes** (`/api/stripe/{checkout,portal,webhook}`), shaped like `src/app/api/items/upload/route.ts`, kept **out of the `src/proxy.ts` matcher** so unauthenticated calls return JSON (not an HTML redirect); the webhook must be reachable by Stripe with no session.
+- **Webhook raw body:** read via `await request.text()` (never `request.json()`); verify with `stripe().webhooks.constructEvent(...)`; use `prisma.user.updateMany({ where: { stripeCustomerId } })` so an unmatched customer is a no-op; **500** on handler error so Stripe retries.
+- **Gating both layers:** actions call `canCreate*` and return a friendly `ActionResult` error over cap; the `createItem` query re-checks `PRO_ITEM_TYPES` (isPro passed as a param, respecting the db-layer-takes-args convention); `POST /api/items/upload` returns **403** for free users; `CreateItemDialog` renders File/Image chips **disabled with an "Upgrade to Pro" hint** for free users (threaded via `TopBar` `isPro` from the 5 pages).
+- **No session/JWT change:** `getCurrentUser()` / `getProfile()` re-read `isPro` from the DB each request, so a webhook write shows on the next page load.
+- **Verification:** keys + price IDs are set locally, but `STRIPE_WEBHOOK_SECRET` is empty and the **Stripe CLI is not installed** — per user decision, the live webhook loop (`stripe login` + `stripe listen` + triggers/test card) is **deferred to a manual step**; everything else (suite, gates, 401 JSON, checkout URL, upload 403) is verified this phase.
+- Full plan: `/Users/dasigr/.claude/plans/load-context-features-stripe-phase-2-spe-reflective-walrus.md`.
 
 ## History
 

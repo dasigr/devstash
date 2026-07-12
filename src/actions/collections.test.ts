@@ -8,12 +8,16 @@ const {
   updateCollectionQuery,
   deleteCollectionQuery,
   setCollectionFavoriteQuery,
+  getCurrentUser,
+  canCreateCollection,
 } = vi.hoisted(() => ({
   auth: vi.fn(),
   createCollectionQuery: vi.fn(),
   updateCollectionQuery: vi.fn(),
   deleteCollectionQuery: vi.fn(),
   setCollectionFavoriteQuery: vi.fn(),
+  getCurrentUser: vi.fn(),
+  canCreateCollection: vi.fn(),
 }));
 vi.mock("@/auth", () => ({ auth }));
 vi.mock("@/lib/db/collections", () => ({
@@ -22,6 +26,8 @@ vi.mock("@/lib/db/collections", () => ({
   deleteCollection: deleteCollectionQuery,
   setCollectionFavorite: setCollectionFavoriteQuery,
 }));
+vi.mock("@/lib/db/user", () => ({ getCurrentUser }));
+vi.mock("@/lib/plan", () => ({ canCreateCollection }));
 
 import {
   createCollection,
@@ -43,6 +49,11 @@ describe("createCollection action", () => {
   beforeEach(() => {
     auth.mockReset();
     createCollectionQuery.mockReset();
+    getCurrentUser.mockReset();
+    canCreateCollection.mockReset();
+    // Default: free user, under the cap.
+    getCurrentUser.mockResolvedValue({ id: "user_1", isPro: false });
+    canCreateCollection.mockResolvedValue({ allowed: true, used: 0, limit: 3 });
   });
 
   it("rejects an unauthenticated caller without touching the DB", async () => {
@@ -52,6 +63,36 @@ describe("createCollection action", () => {
 
     expect(result).toEqual({ success: false, error: "You must be signed in." });
     expect(createCollectionQuery).not.toHaveBeenCalled();
+  });
+
+  it("blocks a free user at the collection cap without writing", async () => {
+    auth.mockResolvedValue({ user: { id: "user_1" } });
+    canCreateCollection.mockResolvedValue({ allowed: false, used: 3, limit: 3 });
+
+    const result = await createCollection({ name: "React Patterns" });
+
+    expect(result).toEqual({
+      success: false,
+      error:
+        "Free plan is limited to 3 collections. Upgrade to Pro for unlimited.",
+    });
+    expect(createCollectionQuery).not.toHaveBeenCalled();
+  });
+
+  it("lets a Pro user through (cap lifted)", async () => {
+    auth.mockResolvedValue({ user: { id: "user_1" } });
+    getCurrentUser.mockResolvedValue({ id: "user_1", isPro: true });
+    canCreateCollection.mockResolvedValue({
+      allowed: true,
+      used: 0,
+      limit: Infinity,
+    });
+    createCollectionQuery.mockResolvedValue(created);
+
+    const result = await createCollection({ name: "React Patterns" });
+
+    expect(canCreateCollection).toHaveBeenCalledWith("user_1", true);
+    expect(result).toEqual({ success: true, data: created });
   });
 
   it("returns validation issues for a bad payload", async () => {

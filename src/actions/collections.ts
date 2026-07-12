@@ -11,6 +11,8 @@ import {
   updateCollection as updateCollectionQuery,
 } from "@/lib/db/collections";
 import type { DashboardCollection } from "@/lib/db/collections";
+import { getCurrentUser } from "@/lib/db/user";
+import { canCreateCollection } from "@/lib/plan";
 import {
   createCollectionSchema,
   updateCollectionSchema,
@@ -36,6 +38,20 @@ export async function createCollection(
       success: false,
       error: "Please check the highlighted fields.",
       issues: z.flattenError(parsed.error).fieldErrors,
+    };
+  }
+
+  // Enforce the free-tier collection cap before any write.
+  const user = await getCurrentUser();
+  const { allowed } = await canCreateCollection(
+    session.user.id,
+    user?.isPro ?? false,
+  );
+  if (!allowed) {
+    return {
+      success: false,
+      error:
+        "Free plan is limited to 3 collections. Upgrade to Pro for unlimited.",
     };
   }
 
