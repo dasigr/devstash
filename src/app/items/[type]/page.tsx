@@ -80,7 +80,7 @@ export default async function ItemsByTypePage({
   return (
     <SidebarProvider>
       <EditorPreferencesProvider value={editorPreferences}>
-      <ItemDrawerProvider>
+      <ItemDrawerProvider isPro={currentUser.isPro}>
       <div className="flex h-full min-h-screen bg-background text-foreground">
         <Sidebar
           itemTypes={sidebarItemTypes}

@@ -53,7 +53,7 @@ export default async function FavoritesPage() {
     <SidebarProvider>
       <EditorPreferencesProvider value={editorPreferences}>
         {/* Item rows open the drawer in place, so wrap in the drawer provider. */}
-        <ItemDrawerProvider>
+        <ItemDrawerProvider isPro={currentUser.isPro}>
           <div className="flex h-full min-h-screen bg-background text-foreground">
             <Sidebar
               itemTypes={sidebarItemTypes}

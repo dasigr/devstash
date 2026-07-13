@@ -27,6 +27,7 @@ import { CodeEditor } from "@/components/dashboard/CodeEditor";
 import { MarkdownEditor } from "@/components/dashboard/MarkdownEditor";
 import { FileUpload, type UploadedFile } from "@/components/dashboard/FileUpload";
 import { CollectionPicker } from "@/components/dashboard/CollectionPicker";
+import { SuggestTags } from "@/components/dashboard/SuggestTags";
 
 /** The selectable creatable types, with their display label / icon / color. */
 const TYPES: {
@@ -116,6 +117,17 @@ export function CreateItemDialog({ isPro = false }: { isPro?: boolean }) {
   function handleOpenChange(next: boolean) {
     setOpen(next);
     if (!next) reset();
+  }
+
+  // Current tags as a clean list, and a helper to append one (deduped).
+  const tagList = tags
+    .split(",")
+    .map((t) => t.trim())
+    .filter((t) => t.length > 0);
+
+  function addTag(tag: string) {
+    if (tagList.some((t) => t.toLowerCase() === tag.toLowerCase())) return;
+    setTags(tagList.length > 0 ? `${tags.replace(/,\s*$/, "")}, ${tag}` : tag);
   }
 
   // Switching type clears the type-specific fields so stale file/content data
@@ -389,6 +401,13 @@ export function CreateItemDialog({ isPro = false }: { isPro?: boolean }) {
             <p className="text-xs text-muted-foreground">
               Separate tags with commas.
             </p>
+            <SuggestTags
+              isPro={isPro}
+              title={title}
+              content={content}
+              existingTags={tagList}
+              onAccept={addTag}
+            />
           </div>
 
           <CollectionPicker

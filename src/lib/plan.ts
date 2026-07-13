@@ -14,6 +14,11 @@ export const FREE_COLLECTION_LIMIT = 3;
 /** System item types available only to Pro users (consumed in Phase 2). */
 export const PRO_ITEM_TYPES = new Set(["file", "image"]);
 
+/** Whether the user may use Pro-only AI features (auto-tag, etc.). */
+export function canUseAi(isPro: boolean): boolean {
+  return isPro;
+}
+
 /** Result of a usage-limit check. `limit` is Infinity for Pro (unlimited). */
 export interface QuotaCheck {
   allowed: boolean;

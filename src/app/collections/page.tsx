@@ -55,7 +55,7 @@ export default async function CollectionsPage({
     <SidebarProvider>
       <EditorPreferencesProvider value={editorPreferences}>
       {/* The TopBar's command palette opens items in the drawer. */}
-      <ItemDrawerProvider>
+      <ItemDrawerProvider isPro={currentUser.isPro}>
       <div className="flex h-full min-h-screen bg-background text-foreground">
         <Sidebar
           itemTypes={sidebarItemTypes}

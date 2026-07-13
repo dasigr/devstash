@@ -1,16 +1,25 @@
-# Current Feature
+# Current Feature: AI Auto-Tagging
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+- Add a Pro-only "Suggest Tags" button (Sparkles icon, ghost variant) beside the tags input in the New Item dialog and the item-drawer edit mode.
+- On click, send the item's title + content to OpenAI `gpt-5-nano` and get 3–5 freeform tag suggestions.
+- Render suggestions as badges, each with accept (✓) / reject (✗) controls; accepted tags append to the item's tag list (persisted on save/create).
+- Gate the feature both in the UI (button hidden for free users) and server-side (auth + Pro + Zod validation + AI rate limit).
+- Establish the reusable OpenAI foundation for later AI features: lazy client (`src/lib/openai.ts`) with `AI_MODEL`/`aiModel()`, `ai` rate-limit config (20/hour per user), `canUseAi` Pro gate, and a `generateAutoTags` server action.
+- Unit tests for the server action + pure helpers (tag parser, Zod schema).
 
 ## Notes
 
-<!-- Additional context, constraints, or details from spec -->
+- **Authoritative spec:** `context/features/ai-auto-tag-spec.md`. Where it conflicts with the older `docs/ai-integration-plan.md`, the spec wins.
+- **OpenAI call (critical gotcha):** use the **Responses API** (`client.responses.create`) with `text: { format: { type: "json_object" } }`, read `response.output_text`, and parse manually — NOT Chat Completions (returns empty content with gpt-5-nano) and NOT `zodTextFormat`/structured output (blows token/length limits). Handle both `{ "tags": [...] }` and `[...]` shapes; normalize to lowercase; truncate content to 2000 chars before the call.
+- **Confirmed decisions:** (1) skip the global `AI_FEATURES_ENABLED` flag — gate only on `isPro` + `isOpenAIConfigured()`; (2) thread `isPro` into the drawer edit form via a new `ItemDrawerProvider` prop across the 5 page mount sites (each already resolves `currentUser.isPro`).
+- `OPENAI_API_KEY` already in `.env`. No schema/migration. Adds one dependency (`openai`).
+- Approved implementation plan: `/Users/dasigr/.claude/plans/load-context-features-ai-auto-tag-spec-m-logical-pinwheel.md`.
 
 ## History
 
