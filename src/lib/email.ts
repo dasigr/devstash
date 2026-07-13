@@ -5,7 +5,7 @@ import { Resend } from "resend";
 // verification is required for development.
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-const FROM = "DevStash <onboarding@resend.dev>";
+const FROM = "DevStash <noreply@devstash.a5project.com>";
 
 interface SendVerificationEmailArgs {
   to: string;
