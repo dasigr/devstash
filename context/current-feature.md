@@ -2,15 +2,20 @@
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+- Replace the free-text "Language" input with a **dropdown** (curated language list) in both the New Item modal (`CreateItemDialog`) and the drawer edit form (`ItemDrawerEdit`).
+- Position the language dropdown **above** the Content field (currently it sits below).
+- Selecting a language updates Monaco syntax highlighting live as you type (already the behavior — preserve it through the input → select swap).
 
 ## Notes
 
-<!-- Additional context, constraints, or details from spec -->
+- The dropdown shows only for **snippet** (`showsLanguagePicker`). **Command** items are effectively always Shell / Bash, so they don't show a picker — `effectiveLanguage` forces `shell` for highlighting/labels across the create editor, the drawer edit editor, and the read-only drawer detail. New commands persist no language (highlighting is derived, not stored).
+- Curated options live in `src/lib/code-types.ts` (`EDITOR_LANGUAGES`) so the list stays pure/testable; store the Monaco language id as the value.
+- Existing items may hold a language not in the curated list (e.g. seed data uses `bash`, `dockerfile`). `normalizeLanguage` canonicalizes a case-insensitive match; `languageOptions` prepends any still-unknown current value so the `<select>` reflects it instead of silently resetting.
+- Shared native `<select>` extracted to `LanguageSelect` (matches the `EditorPreferencesForm` select styling) to avoid duplicating the class string across both forms.
 
 ## History
 

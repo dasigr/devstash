@@ -9,7 +9,13 @@ import type { NewItemType } from "@/lib/validations/items";
 import { fileExtension } from "@/lib/validations/upload";
 import { toastManager } from "@/lib/toast";
 import { cn } from "@/lib/utils";
-import { editorLanguageLabel, isCodeType, isMarkdownType } from "@/lib/code-types";
+import {
+  editorLanguageLabel,
+  effectiveLanguage,
+  isCodeType,
+  isMarkdownType,
+  showsLanguagePicker,
+} from "@/lib/code-types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -24,6 +30,7 @@ import {
 } from "@/components/ui/dialog";
 import { ItemTypeIcon } from "@/components/dashboard/ItemTypeIcon";
 import { CodeEditor } from "@/components/dashboard/CodeEditor";
+import { LanguageSelect } from "@/components/dashboard/LanguageSelect";
 import { MarkdownEditor } from "@/components/dashboard/MarkdownEditor";
 import { FileUpload, type UploadedFile } from "@/components/dashboard/FileUpload";
 import { CollectionPicker } from "@/components/dashboard/CollectionPicker";
@@ -52,7 +59,6 @@ const CONTENT_TYPES = new Set<NewItemType>([
   "command",
   "note",
 ]);
-const LANGUAGE_TYPES = new Set<NewItemType>(["snippet", "command"]);
 const URL_TYPES = new Set<NewItemType>(["link"]);
 const FILE_TYPES = new Set<NewItemType>(["file", "image"]);
 
@@ -88,7 +94,7 @@ export function CreateItemDialog({ isPro = false }: { isPro?: boolean }) {
   const [pending, setPending] = useState(false);
 
   const showContent = CONTENT_TYPES.has(type);
-  const showLanguage = LANGUAGE_TYPES.has(type);
+  const showLanguage = showsLanguagePicker(type);
   const showUrl = URL_TYPES.has(type);
   const showFile = FILE_TYPES.has(type);
   const useCodeEditor = isCodeType(type);
@@ -300,6 +306,22 @@ export function CreateItemDialog({ isPro = false }: { isPro?: boolean }) {
             />
           </div>
 
+          {showLanguage && (
+            <div className="space-y-1.5">
+              <label
+                htmlFor="new-item-language"
+                className="text-sm font-medium text-foreground"
+              >
+                Language
+              </label>
+              <LanguageSelect
+                id="new-item-language"
+                value={language}
+                onChange={setLanguage}
+              />
+            </div>
+          )}
+
           {showContent && (
             <div className="space-y-1.5">
               <label
@@ -311,8 +333,8 @@ export function CreateItemDialog({ isPro = false }: { isPro?: boolean }) {
               {useCodeEditor ? (
                 <CodeEditor
                   value={content}
-                  language={language}
-                  label={editorLanguageLabel(language, type)}
+                  language={effectiveLanguage(type, language)}
+                  label={editorLanguageLabel(effectiveLanguage(type, language), type)}
                   onChange={setContent}
                   ariaLabel="Content"
                 />
@@ -331,23 +353,6 @@ export function CreateItemDialog({ isPro = false }: { isPro?: boolean }) {
                   className="font-mono text-xs"
                 />
               )}
-            </div>
-          )}
-
-          {showLanguage && (
-            <div className="space-y-1.5">
-              <label
-                htmlFor="new-item-language"
-                className="text-sm font-medium text-foreground"
-              >
-                Language
-              </label>
-              <Input
-                id="new-item-language"
-                value={language}
-                onChange={(e) => setLanguage(e.target.value)}
-                placeholder="e.g. typescript"
-              />
             </div>
           )}
 

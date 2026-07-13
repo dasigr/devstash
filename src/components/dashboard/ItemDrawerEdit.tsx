@@ -7,13 +7,21 @@ import { Loader2, X } from "lucide-react";
 import type { ItemDetail } from "@/lib/db/items";
 import { updateItem } from "@/actions/items";
 import { toastManager } from "@/lib/toast";
-import { editorLanguageLabel, isCodeType, isMarkdownType } from "@/lib/code-types";
+import {
+  editorLanguageLabel,
+  effectiveLanguage,
+  isCodeType,
+  isMarkdownType,
+  normalizeLanguage,
+  showsLanguagePicker,
+} from "@/lib/code-types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { SheetTitle } from "@/components/ui/sheet";
 import { ItemTypeBadge } from "@/components/dashboard/ItemTypeBadge";
 import { CodeEditor } from "@/components/dashboard/CodeEditor";
+import { LanguageSelect } from "@/components/dashboard/LanguageSelect";
 import { MarkdownEditor } from "@/components/dashboard/MarkdownEditor";
 import { CollectionPicker } from "@/components/dashboard/CollectionPicker";
 import { SuggestTags } from "@/components/dashboard/SuggestTags";
@@ -25,7 +33,6 @@ function typeHeading(name: string): string {
 
 // Which type-specific fields each item type exposes, per the edit spec.
 const CONTENT_TYPES = new Set(["snippet", "prompt", "command", "note"]);
-const LANGUAGE_TYPES = new Set(["snippet", "command"]);
 const URL_TYPES = new Set(["link"]);
 
 /** Trim a value and treat blank as null (matches the server-side coercion). */
@@ -57,7 +64,7 @@ export function ItemDrawerEdit({
   const [title, setTitle] = useState(item.title);
   const [description, setDescription] = useState(item.description ?? "");
   const [content, setContent] = useState(item.content ?? "");
-  const [language, setLanguage] = useState(item.language ?? "");
+  const [language, setLanguage] = useState(normalizeLanguage(item.language));
   const [url, setUrl] = useState(item.url ?? "");
   const [tags, setTags] = useState(item.tags.join(", "));
   const [collectionIds, setCollectionIds] = useState<string[]>(
@@ -68,7 +75,7 @@ export function ItemDrawerEdit({
 
   const typeName = item.itemType.name;
   const showContent = CONTENT_TYPES.has(typeName);
-  const showLanguage = LANGUAGE_TYPES.has(typeName);
+  const showLanguage = showsLanguagePicker(typeName);
   const showUrl = URL_TYPES.has(typeName);
   const useCodeEditor = isCodeType(typeName);
   const useMarkdownEditor = isMarkdownType(typeName);
@@ -197,6 +204,23 @@ export function ItemDrawerEdit({
           />
         </div>
 
+        {showLanguage && (
+          <div className="space-y-1.5">
+            <label
+              htmlFor="item-language"
+              className="text-sm font-medium text-foreground"
+            >
+              Language
+            </label>
+            <LanguageSelect
+              id="item-language"
+              value={language}
+              onChange={setLanguage}
+              disabled={pending}
+            />
+          </div>
+        )}
+
         {showContent && (
           <div className="space-y-1.5">
             <label
@@ -208,8 +232,8 @@ export function ItemDrawerEdit({
             {useCodeEditor ? (
               <CodeEditor
                 value={content}
-                language={language}
-                label={editorLanguageLabel(language, typeName)}
+                language={effectiveLanguage(typeName, language)}
+                label={editorLanguageLabel(effectiveLanguage(typeName, language), typeName)}
                 onChange={setContent}
                 ariaLabel="Content"
               />
@@ -228,23 +252,6 @@ export function ItemDrawerEdit({
                 className="font-mono text-xs"
               />
             )}
-          </div>
-        )}
-
-        {showLanguage && (
-          <div className="space-y-1.5">
-            <label
-              htmlFor="item-language"
-              className="text-sm font-medium text-foreground"
-            >
-              Language
-            </label>
-            <Input
-              id="item-language"
-              value={language}
-              onChange={(e) => setLanguage(e.target.value)}
-              placeholder="e.g. typescript"
-            />
           </div>
         )}
 
