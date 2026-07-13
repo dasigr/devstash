@@ -385,7 +385,7 @@ export function CreateItemDialog({ isPro = false }: { isPro?: boolean }) {
             </div>
           )}
 
-          <div className="space-y-1.5">
+          <div className="relative space-y-1.5">
             <label
               htmlFor="new-item-tags"
               className="text-sm font-medium text-foreground"
