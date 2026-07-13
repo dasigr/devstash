@@ -101,6 +101,7 @@ export function ItemDrawerProvider({
           ) : (
             <ItemDrawerDetail
               item={item}
+              isPro={isPro}
               onEdit={() => setEditing(true)}
               onDeleted={() => setOpen(false)}
             />

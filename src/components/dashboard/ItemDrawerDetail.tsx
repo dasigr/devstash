@@ -60,10 +60,13 @@ function contentLabel(item: ItemDetail): string {
  */
 export function ItemDrawerDetail({
   item,
+  isPro,
   onEdit,
   onDeleted,
 }: {
   item: ItemDetail;
+  /** Whether the signed-in user is Pro — gates the code "Explain" feature. */
+  isPro: boolean;
   onEdit: () => void;
   onDeleted: () => void;
 }) {
@@ -197,6 +200,7 @@ export function ItemDrawerDetail({
             label={contentLabel(item)}
             readOnly
             ariaLabel={`${item.title} content`}
+            explain={{ isPro, title: item.title }}
           />
         ) : isMarkdownType(item.itemType.name) ? (
           <MarkdownEditor
