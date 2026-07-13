@@ -63,12 +63,15 @@ export function ItemDrawerDetail({
   isPro,
   onEdit,
   onDeleted,
+  onUseOptimized,
 }: {
   item: ItemDetail;
-  /** Whether the signed-in user is Pro — gates the code "Explain" feature. */
+  /** Whether the signed-in user is Pro — gates the code "Explain" and prompt "Optimize" features. */
   isPro: boolean;
   onEdit: () => void;
   onDeleted: () => void;
+  /** Loads an AI-optimized prompt into edit mode (Content pre-filled). */
+  onUseOptimized: (optimized: string) => void;
 }) {
   const [copied, setCopied] = useState(false);
   const value = copyValue(item);
@@ -207,6 +210,11 @@ export function ItemDrawerDetail({
             value={value}
             readOnly
             ariaLabel={`${item.title} content`}
+            optimize={
+              item.itemType.name === "prompt"
+                ? { isPro, title: item.title, onApply: onUseOptimized }
+                : undefined
+            }
           />
         ) : (
           <div className="overflow-hidden rounded-lg border border-border">

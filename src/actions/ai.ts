@@ -7,6 +7,7 @@ import { auth } from "@/auth";
 import { parseSuggestedTags } from "@/lib/ai-tags";
 import { cleanSummary } from "@/lib/ai-summary";
 import { cleanExplanation } from "@/lib/ai-explain";
+import { cleanOptimizedPrompt } from "@/lib/ai-prompt-optimizer";
 import { getCurrentUser } from "@/lib/db/user";
 import { aiModel, isOpenAIConfigured, openai } from "@/lib/openai";
 import { canUseAi } from "@/lib/plan";
@@ -16,6 +17,8 @@ import {
   autoTagSchema,
   EXPLAIN_CONTENT_LIMIT,
   explainCodeSchema,
+  PROMPT_OPTIMIZE_CONTENT_LIMIT,
+  promptOptimizeSchema,
   SUMMARY_CONTENT_LIMIT,
   summarySchema,
 } from "@/lib/validations/ai";
@@ -241,6 +244,84 @@ export async function explainCode(
     return {
       success: false,
       error: "Something went wrong generating the explanation.",
+    };
+  }
+}
+
+const PROMPT_OPTIMIZE_INSTRUCTIONS =
+  "You are a prompt engineer. You will be given an AI prompt to improve. Rewrite " +
+  "it to be clearer, more specific, and more effective — sharpen the intent, add " +
+  "helpful structure or constraints, and remove ambiguity — while preserving the " +
+  "original goal, and keep it ready to use as-is. Output ONLY the improved prompt " +
+  "text itself: no title line, no 'Title:' or 'Prompt:' labels, no preamble, no " +
+  "explanation, and no surrounding quotes or code fences.";
+
+/**
+ * Refine an AI prompt using OpenAI (Pro-only). Same pattern as explainCode:
+ * auth → configured → validate → Pro gate → rate limit → call the model →
+ * normalize. Uses the Responses API with plain-text output (no json_object
+ * format); the result is the cleaned prompt text, so no JSON parse and no "json
+ * in input" requirement.
+ */
+export async function optimizePrompt(
+  input: unknown,
+): Promise<ActionResult<string>> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { success: false, error: "You must be signed in." };
+  }
+
+  if (!isOpenAIConfigured()) {
+    return { success: false, error: "AI is not available right now." };
+  }
+
+  const parsed = promptOptimizeSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: "Please check the highlighted fields.",
+      issues: z.flattenError(parsed.error).fieldErrors,
+    };
+  }
+
+  const user = await getCurrentUser();
+  const isPro = user?.isPro ?? false;
+  if (!canUseAi(isPro)) {
+    return { success: false, error: "AI prompt optimization is a Pro feature." };
+  }
+
+  const rate = await checkRateLimit("ai", session.user.id);
+  if (!rate.success) {
+    return {
+      success: false,
+      error: "You've used your AI requests for now. Try again later.",
+    };
+  }
+
+  const { title, content } = parsed.data;
+  const truncated = content.slice(0, PROMPT_OPTIMIZE_CONTENT_LIMIT);
+  // Frame the input as a plain instruction rather than "Title:/Prompt:" labels —
+  // since the output is a rewrite of the input, labeled fields invite the model
+  // to echo them back into the optimized text.
+  const promptInput = `Improve this prompt (titled "${title}"):\n\n${truncated}`;
+
+  try {
+    const response = await openai().responses.create({
+      model: aiModel(),
+      instructions: PROMPT_OPTIMIZE_INSTRUCTIONS,
+      input: promptInput,
+    });
+
+    const optimized = cleanOptimizedPrompt(response.output_text ?? "");
+    if (optimized.length === 0) {
+      return { success: false, error: "The AI didn't return an optimized prompt." };
+    }
+    return { success: true, data: optimized };
+  } catch (error) {
+    console.error("Failed to optimize prompt:", error);
+    return {
+      success: false,
+      error: "Something went wrong optimizing the prompt.",
     };
   }
 }

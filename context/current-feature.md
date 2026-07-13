@@ -1,16 +1,26 @@
-# Current Feature
+# Current Feature: AI Prompt Optimizer
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+- Add a Pro-only **"Optimize"** button in the item drawer's editor header for **prompt** items only, placed like the "Explain" button on snippets/commands (in the `CodeEditor` header).
+- On click, send the prompt's title + content to OpenAI `gpt-5-nano` and return a refined version.
+- Show the refined prompt for review and **ask whether to use it**; on confirm, **load the refined text into the drawer's edit mode** (Content pre-filled) so the user can tweak and press Save.
+- Gate the feature both in the UI (free users see a `Crown` affordance, not a working button) and server-side (`isPro` + `isOpenAIConfigured()` + `"ai"` rate-limit bucket).
+- Notes (which also use `MarkdownEditor`) must **not** get the button — prompt type only.
 
 ## Notes
 
-<!-- Additional context, constraints, or details from spec -->
+- **Fourth and final** planned AI feature; mirrors the shipped `explainCode` feature layer-for-layer (plain-text Responses API — **no** `json_object` format, so no "json must appear in input" gotcha).
+- Prompts render via `MarkdownEditor`, not `CodeEditor`, so the button goes in the `MarkdownEditor` header (new optional `optimize` prop; feature is off unless passed).
+- **Apply behavior (user decision):** confirming "Use this prompt" hands off to edit mode with Content pre-filled — reuses the existing `updateItem` Save path, **no new persistence code**. Wired via a new `editContentOverride` in `ItemDrawer` → `initialContent` prop on `ItemDrawerEdit`.
+- **New:** `src/lib/ai-prompt-optimizer.ts` (`cleanOptimizedPrompt`, modeled on `ai-explain.ts` — preserves newlines, unwraps a wrapping fence). **Edit:** `src/lib/validations/ai.ts` (`promptOptimizeSchema`, content required), `src/actions/ai.ts` (`optimizePrompt`), `MarkdownEditor.tsx`, `ItemDrawerDetail.tsx`, `ItemDrawer.tsx`, `ItemDrawerEdit.tsx`.
+- **No schema/migration, no new deps** (reuses `openai`, `react-markdown` + `remark-gfm`, existing `"ai"` rate-limit bucket).
+- Tests (Vitest, actions & utilities only): new `ai-prompt-optimizer.test.ts`, extend `validations/ai.test.ts` and `actions/ai.test.ts` (mirror the `explainCode` cases).
+- Full design: `/Users/dasigr/.claude/plans/load-implement-prompt-optimization-partitioned-gosling.md`.
 
 ## History
 

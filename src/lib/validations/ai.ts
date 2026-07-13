@@ -39,3 +39,15 @@ export const explainCodeSchema = z.object({
 });
 
 export type ExplainCodeInput = z.infer<typeof explainCodeSchema>;
+
+/** Max content chars sent to the prompt-optimizer model (truncated in the action). */
+export const PROMPT_OPTIMIZE_CONTENT_LIMIT = 4000;
+
+// Optimizing a prompt needs the actual prompt text, so `content` is required
+// here (like explainCodeSchema, unlike the tag/summary schemas).
+export const promptOptimizeSchema = z.object({
+  title: z.string().trim().min(1, "Title is required").max(300),
+  content: z.string().trim().min(1, "Content is required").max(20000),
+});
+
+export type PromptOptimizeInput = z.infer<typeof promptOptimizeSchema>;

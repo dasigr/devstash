@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   autoTagSchema,
   explainCodeSchema,
+  promptOptimizeSchema,
   summarySchema,
 } from "@/lib/validations/ai";
 
@@ -109,6 +110,49 @@ describe("explainCodeSchema", () => {
   it("rejects content over the max length", () => {
     expect(
       explainCodeSchema.safeParse({ title: "ok", content: "a".repeat(20001) })
+        .success,
+    ).toBe(false);
+  });
+});
+
+describe("promptOptimizeSchema", () => {
+  it("accepts title + content and trims the title", () => {
+    const parsed = promptOptimizeSchema.parse({
+      title: "  Senior code reviewer  ",
+      content: "Review this code.",
+    });
+    expect(parsed).toEqual({
+      title: "Senior code reviewer",
+      content: "Review this code.",
+    });
+  });
+
+  it("requires non-empty content (like explainCode)", () => {
+    expect(
+      promptOptimizeSchema.safeParse({ title: "ok", content: "" }).success,
+    ).toBe(false);
+    expect(
+      promptOptimizeSchema.safeParse({ title: "ok", content: "   " }).success,
+    ).toBe(false);
+    expect(promptOptimizeSchema.safeParse({ title: "ok" }).success).toBe(false);
+  });
+
+  it("rejects a blank title", () => {
+    expect(
+      promptOptimizeSchema.safeParse({ title: "  ", content: "x" }).success,
+    ).toBe(false);
+  });
+
+  it("rejects a title over the max length", () => {
+    expect(
+      promptOptimizeSchema.safeParse({ title: "a".repeat(301), content: "x" })
+        .success,
+    ).toBe(false);
+  });
+
+  it("rejects content over the max length", () => {
+    expect(
+      promptOptimizeSchema.safeParse({ title: "ok", content: "a".repeat(20001) })
         .success,
     ).toBe(false);
   });
