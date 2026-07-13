@@ -1,16 +1,32 @@
-# Current Feature
+# Current Feature — AI Summary → Description
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+- A Pro-only **icon button** (Sparkles) sits at the top-right of the Description label in both `CreateItemDialog` (New Item modal) and `ItemDrawerEdit` (drawer edit form).
+- Clicking it sends the item's current **title + best-available body** to `gpt-5-nano` and returns a concise **1–2 sentence** description.
+- The result renders as a **preview with Use / Dismiss** controls below the field (like Suggest Tags) — **Use** fills the Description field, **Dismiss** clears it; nothing is overwritten until Use is clicked.
+- Works for **all item types** from whatever info is available (content for text types, url for links, fileName for files/images, else title alone).
+- Reads **live, unsaved inputs** — no save required first.
+- Gated for Pro both in the UI (hidden for free users) and in the server action; rate-limited via the shared `"ai"` bucket.
 
 ## Notes
 
-<!-- Additional context, constraints, or details from spec -->
+Second AI feature and direct sibling of the shipped **AI Auto-Tagging** feature — reuses its entire foundation (`src/lib/openai.ts`, `canUseAi`, the `"ai"` rate-limit bucket, the `ActionResult` action pattern) and mirrors its Pro-gating.
+
+**Approach (mirror the auto-tag stack layer-for-layer):**
+
+1. **Validation** — `src/lib/validations/ai.ts` (extend): add `SUMMARY_CONTENT_LIMIT = 4000` + `summarySchema` (`{ title: trim min(1) max(300), content: max(20000).optional().default("") }`) + `SummaryInput`. Same shape as `autoTagSchema`; the component folds the best-available body into `content`.
+2. **Pure helper** — new `src/lib/ai-summary.ts`: `SUMMARY_MAX_CHARS = 300` + `cleanSummary(raw): string` — trim, collapse whitespace/newlines to single spaces, strip a single pair of wrapping quotes, cap at max, `""` on empty (never throws). Plain-text output (no `json_object`), so no JSON parse and no "json in input" gotcha.
+3. **Server action** — `src/actions/ai.ts` (add `generateSummary`): copy `generateAutoTags` exactly (`auth()` → `isOpenAIConfigured()` → `summarySchema.safeParse` → `getCurrentUser()` + `canUseAi` → `checkRateLimit("ai", userId)` → truncate to `SUMMARY_CONTENT_LIMIT`). Instructions: write a clear, concise 1–2 sentence description, respond with only the description (no preamble/quotes). `openai().responses.create({ model, instructions, input })` — **no** `text.format`. Return `cleanSummary(output_text)` as `ActionResult<string>`.
+4. **Component** — new `src/components/dashboard/SummarizeDescription.tsx` (client, modeled on `SuggestTags.tsx`): props `{ isPro, title, content, url?, fileName?, onApply }`; `if (!isPro) return null`; body = `content?.trim() || url?.trim() || fileName?.trim() || ""`; icon-only ghost Sparkles button `absolute top-0 right-0`, disabled when `pending || title empty`; on success show a preview block with **Use** (`onApply` then clear) / **Dismiss** (X). Toast on error/empty.
+5. **Wiring** — `CreateItemDialog.tsx` + `ItemDrawerEdit.tsx`: make each Description `<div>` wrapper `relative space-y-1.5` and render `<SummarizeDescription>` inside (both forms already receive `isPro`; no page changes).
+6. **Tests** — `src/lib/ai-summary.test.ts` (new, `cleanSummary`), extend `src/lib/validations/ai.test.ts` (`summarySchema`) and `src/actions/ai.test.ts` (`generateSummary`: unauth/not-configured/non-Pro/rate-limited without an OpenAI call, validation issues, content truncation, success, thrown→generic).
+
+**Decisions / non-goals:** reuse the `"ai"` rate-limit bucket (shared 20/hr/user); plain-text output (no JSON); icon-only button; no schema/migration, no new deps. Out of scope: server-side persistence of suggestions, streaming, the other two AI features (explain-code, prompt-optimizer).
 
 ## History
 

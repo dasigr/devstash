@@ -35,6 +35,7 @@ import { MarkdownEditor } from "@/components/dashboard/MarkdownEditor";
 import { FileUpload, type UploadedFile } from "@/components/dashboard/FileUpload";
 import { CollectionPicker } from "@/components/dashboard/CollectionPicker";
 import { SuggestTags } from "@/components/dashboard/SuggestTags";
+import { SummarizeDescription } from "@/components/dashboard/SummarizeDescription";
 
 /** The selectable creatable types, with their display label / icon / color. */
 const TYPES: {
@@ -290,7 +291,7 @@ export function CreateItemDialog({ isPro = false }: { isPro?: boolean }) {
             />
           </div>
 
-          <div className="space-y-1.5">
+          <div className="relative space-y-1.5">
             <label
               htmlFor="new-item-description"
               className="text-sm font-medium text-foreground"
@@ -303,6 +304,14 @@ export function CreateItemDialog({ isPro = false }: { isPro?: boolean }) {
               onChange={(e) => setDescription(e.target.value)}
               rows={2}
               placeholder="Optional"
+            />
+            <SummarizeDescription
+              isPro={isPro}
+              title={title}
+              content={content}
+              url={url}
+              fileName={file?.fileName}
+              onApply={setDescription}
             />
           </div>
 
