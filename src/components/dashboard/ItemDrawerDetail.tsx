@@ -12,7 +12,12 @@ import {
 } from "lucide-react";
 
 import type { ItemDetail } from "@/lib/db/items";
-import { isCodeType, isMarkdownType } from "@/lib/code-types";
+import {
+  editorLanguageLabel,
+  effectiveLanguage,
+  isCodeType,
+  isMarkdownType,
+} from "@/lib/code-types";
 import { formatBytes } from "@/lib/validations/upload";
 import { Button } from "@/components/ui/button";
 import { SheetClose, SheetTitle } from "@/components/ui/sheet";
@@ -43,7 +48,8 @@ function copyValue(item: ItemDetail): string {
 
 /** Label for the content box header — the code language, else the type name. */
 function contentLabel(item: ItemDetail): string {
-  return item.language ?? typeHeading(item.itemType.name);
+  const type = item.itemType.name;
+  return editorLanguageLabel(effectiveLanguage(type, item.language), type);
 }
 
 /**
@@ -187,7 +193,7 @@ export function ItemDrawerDetail({
         ) : isCodeType(item.itemType.name) && item.contentType !== "URL" ? (
           <CodeEditor
             value={value}
-            language={item.language}
+            language={effectiveLanguage(item.itemType.name, item.language)}
             label={contentLabel(item)}
             readOnly
             ariaLabel={`${item.title} content`}
