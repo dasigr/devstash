@@ -26,3 +26,16 @@ export const summarySchema = z.object({
 });
 
 export type SummaryInput = z.infer<typeof summarySchema>;
+
+/** Max content chars sent to the explain model (truncated in the action). */
+export const EXPLAIN_CONTENT_LIMIT = 4000;
+
+// Explaining code needs actual code, so `content` is required here (unlike the
+// tag/summary schemas). `language` is optional context for the model.
+export const explainCodeSchema = z.object({
+  title: z.string().trim().min(1, "Title is required").max(300),
+  content: z.string().trim().min(1, "Content is required").max(20000),
+  language: z.string().max(50).optional().default(""),
+});
+
+export type ExplainCodeInput = z.infer<typeof explainCodeSchema>;

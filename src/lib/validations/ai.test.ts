@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { autoTagSchema, summarySchema } from "@/lib/validations/ai";
+import {
+  autoTagSchema,
+  explainCodeSchema,
+  summarySchema,
+} from "@/lib/validations/ai";
 
 describe("autoTagSchema", () => {
   it("accepts a title with content and trims the title", () => {
@@ -61,5 +65,51 @@ describe("summarySchema", () => {
       content: "a".repeat(20001),
     });
     expect(result.success).toBe(false);
+  });
+});
+
+describe("explainCodeSchema", () => {
+  it("accepts title + content and trims the title, defaults language", () => {
+    const parsed = explainCodeSchema.parse({
+      title: "  useDebounce  ",
+      content: "const x = 1;",
+    });
+    expect(parsed).toEqual({
+      title: "useDebounce",
+      content: "const x = 1;",
+      language: "",
+    });
+  });
+
+  it("keeps a provided language", () => {
+    const parsed = explainCodeSchema.parse({
+      title: "cmd",
+      content: "ls -la",
+      language: "shell",
+    });
+    expect(parsed.language).toBe("shell");
+  });
+
+  it("requires non-empty content (unlike tag/summary)", () => {
+    expect(
+      explainCodeSchema.safeParse({ title: "ok", content: "" }).success,
+    ).toBe(false);
+    expect(
+      explainCodeSchema.safeParse({ title: "ok", content: "   " }).success,
+    ).toBe(false);
+    expect(explainCodeSchema.safeParse({ title: "ok" }).success).toBe(false);
+  });
+
+  it("rejects a blank title", () => {
+    expect(
+      explainCodeSchema.safeParse({ title: "  ", content: "x" }).success,
+    ).toBe(false);
+  });
+
+  it("rejects content over the max length", () => {
+    expect(
+      explainCodeSchema.safeParse({ title: "ok", content: "a".repeat(20001) })
+        .success,
+    ).toBe(false);
   });
 });

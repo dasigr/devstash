@@ -8,11 +8,53 @@ import Editor, {
   type OnMount,
 } from "@monaco-editor/react";
 import type { editor } from "monaco-editor";
-import { Check, Copy } from "lucide-react";
+import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { Check, Copy, Crown, Loader2, Sparkles } from "lucide-react";
 
+import { explainCode } from "@/actions/ai";
 import { monacoLanguage } from "@/lib/code-types";
+import { cn } from "@/lib/utils";
+import { toastManager } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
 import { useEditorPreferences } from "@/components/dashboard/editor-preferences-context";
+
+/** Config that enables the Pro-only "Explain" feature (drawer read view only). */
+export interface ExplainConfig {
+  /** Whether the signed-in user is Pro. Free users see a Crown + tooltip. */
+  isPro: boolean;
+  /** The item's title, sent to the model for context. */
+  title: string;
+}
+
+type EditorView = "code" | "explain";
+
+/** A single Code/Explain tab in the editor header (mirrors MarkdownEditor). */
+function TabButton({
+  active,
+  children,
+  onClick,
+}: {
+  active: boolean;
+  children: React.ReactNode;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={cn(
+        "rounded px-2.5 py-1 text-xs font-medium transition-colors",
+        active
+          ? "bg-white/10 text-foreground"
+          : "text-muted-foreground hover:text-foreground",
+      )}
+    >
+      {children}
+    </button>
+  );
+}
 
 // Load Monaco from the CDN, pinned to the version we install so the runtime and
 // the bundled TypeScript types stay in lockstep.
@@ -98,6 +140,7 @@ export function CodeEditor({
   readOnly = false,
   onChange,
   ariaLabel,
+  explain,
 }: {
   value: string;
   language?: string | null;
@@ -106,10 +149,15 @@ export function CodeEditor({
   readOnly?: boolean;
   onChange?: (value: string) => void;
   ariaLabel?: string;
+  /** Enables the Pro-only "Explain" feature. Omit to hide it (e.g. edit forms). */
+  explain?: ExplainConfig;
 }) {
   const prefs = useEditorPreferences();
   const [height, setHeight] = useState(MIN_HEIGHT);
   const [copied, setCopied] = useState(false);
+  const [view, setView] = useState<EditorView>("code");
+  const [explanation, setExplanation] = useState<string | null>(null);
+  const [explaining, setExplaining] = useState(false);
 
   const handleMount: OnMount = (editorInstance) => {
     const updateHeight = () => {
@@ -131,6 +179,36 @@ export function CodeEditor({
       setTimeout(() => setCopied(false), 1500);
     } catch {
       // Clipboard can fail (permissions / insecure context); ignore silently.
+    }
+  }
+
+  async function handleExplain() {
+    if (!explain) return;
+    setExplaining(true);
+    try {
+      const result = await explainCode({
+        title: explain.title,
+        content: value,
+        language: language ?? "",
+      });
+      if (!result.success) {
+        toastManager.add({
+          title: "Couldn't explain this code",
+          description: result.error,
+          timeout: 6000,
+        });
+        return;
+      }
+      setExplanation(result.data);
+      setView("explain");
+    } catch {
+      toastManager.add({
+        title: "Couldn't explain this code",
+        description: "Something went wrong. Please try again.",
+        timeout: 6000,
+      });
+    } finally {
+      setExplaining(false);
     }
   }
 
@@ -165,19 +243,64 @@ export function CodeEditor({
     stickyScroll: { enabled: false },
   };
 
+  const showTabs = explanation !== null;
+
   return (
     <div className="overflow-hidden rounded-lg border border-border bg-card">
-      {/* Header: macOS dots + language label + copy */}
+      {/* Header: dots (or Code/Explain tabs once explained) on the left; label,
+          Explain and Copy on the right. */}
       <div className="flex items-center justify-between gap-2 border-b border-border bg-muted/50 px-3 py-2">
-        <div className="flex items-center gap-1.5" aria-hidden="true">
-          <span className="size-3 rounded-full bg-[#ff5f57]" />
-          <span className="size-3 rounded-full bg-[#febc2e]" />
-          <span className="size-3 rounded-full bg-[#28c840]" />
-        </div>
+        {showTabs ? (
+          <div className="flex items-center gap-1">
+            <TabButton active={view === "code"} onClick={() => setView("code")}>
+              Code
+            </TabButton>
+            <TabButton
+              active={view === "explain"}
+              onClick={() => setView("explain")}
+            >
+              Explain
+            </TabButton>
+          </div>
+        ) : (
+          <div className="flex items-center gap-1.5" aria-hidden="true">
+            <span className="size-3 rounded-full bg-[#ff5f57]" />
+            <span className="size-3 rounded-full bg-[#febc2e]" />
+            <span className="size-3 rounded-full bg-[#28c840]" />
+          </div>
+        )}
         <div className="flex items-center gap-2">
-          <span className="font-mono text-xs font-medium text-muted-foreground">
-            {label}
-          </span>
+          {view === "code" && (
+            <span className="font-mono text-xs font-medium text-muted-foreground">
+              {label}
+            </span>
+          )}
+          {explain &&
+            (explain.isPro ? (
+              <Button
+                variant="ghost"
+                size="xs"
+                type="button"
+                onClick={handleExplain}
+                disabled={explaining}
+                aria-label="Explain code"
+              >
+                {explaining ? <Loader2 className="animate-spin" /> : <Sparkles />}
+                Explain
+              </Button>
+            ) : (
+              // Free users: a non-interactive affordance with a native tooltip
+              // (matches the app's Pro-gating pattern). A <span> reliably shows
+              // its title on hover, unlike a disabled <button>.
+              <span
+                title="AI features require Pro subscription"
+                aria-label="Explain code requires Pro subscription"
+                className="inline-flex cursor-not-allowed items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-muted-foreground"
+              >
+                <Crown className="size-3.5" />
+                Explain
+              </span>
+            ))}
           <Button
             variant="ghost"
             size="xs"
@@ -191,22 +314,36 @@ export function CodeEditor({
         </div>
       </div>
 
-      <Editor
-        height={height}
-        language={monacoLanguage(language)}
-        value={value}
-        theme={prefs.theme}
-        beforeMount={handleBeforeMount}
-        onMount={handleMount}
-        onChange={handleChange}
-        options={options}
-        loading={
-          <div className="p-4 font-mono text-xs text-muted-foreground">
-            Loading editor…
-          </div>
-        }
-        wrapperProps={{ "aria-label": ariaLabel ?? label }}
-      />
+      {/* Body — the Monaco editor, or the rendered Markdown explanation, in the
+          same container space. The editor stays mounted (hidden) so its fluid
+          height and Monaco state survive toggling back to Code. */}
+      <div className={view === "explain" ? "hidden" : undefined}>
+        <Editor
+          height={height}
+          language={monacoLanguage(language)}
+          value={value}
+          theme={prefs.theme}
+          beforeMount={handleBeforeMount}
+          onMount={handleMount}
+          onChange={handleChange}
+          options={options}
+          loading={
+            <div className="p-4 font-mono text-xs text-muted-foreground">
+              Loading editor…
+            </div>
+          }
+          wrapperProps={{ "aria-label": ariaLabel ?? label }}
+        />
+      </div>
+      {view === "explain" && explanation !== null && (
+        <div
+          className="markdown-preview overflow-y-auto px-4 py-3"
+          style={{ maxHeight: MAX_HEIGHT }}
+          aria-label={ariaLabel ? `${ariaLabel} explanation` : "Code explanation"}
+        >
+          <Markdown remarkPlugins={[remarkGfm]}>{explanation}</Markdown>
+        </div>
+      )}
     </div>
   );
 }

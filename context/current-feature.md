@@ -1,16 +1,29 @@
-# Current Feature
+# Current Feature: AI Explain Code
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+- Add an `explainCode` server action (auth, Pro gating, Zod validation, rate limiting) that sends snippet/command content to OpenAI `gpt-5-nano` and returns a concise (~200–300 word) markdown explanation
+- Add an "Explain" button (Sparkles icon) to the code editor's window-controls header, next to Copy — only in the item drawer read view, only for snippet and command types
+- After generating, show Code/Explain tabs in the editor header to toggle between the code and the rendered markdown explanation in the same container space
+- Loading state via Loader2 spinner while generating; errors surfaced via toast (Pro gating, rate limit, AI service errors)
+- Free-user UI gating: show a Crown icon + tooltip ("AI features require Pro subscription") instead of a working button
+- Thread `isPro` into the item drawer / code editor as a prop
+- Unit tests for the server action
 
 ## Notes
 
-<!-- Additional context, constraints, or details from spec -->
+- Explanations are **not** persisted — regenerated on each click
+- Snippet and command only (the two code-ish types); prompts/notes/links/files/images are excluded as already human-readable or non-code
+- Available only in the drawer **read view**, not in create/edit forms
+- Reuse the existing AI foundation from AI Auto-Tagging / AI Summary: `src/lib/openai.ts` (lazy client + `isOpenAIConfigured`/`aiModel`), `canUseAi(isPro)` in `plan.ts`, the shared `"ai"` rate-limit bucket (20/hr/user), `ActionResult` action pattern, and `src/actions/ai.ts`
+- The summary feature uses the Responses API with **plain-text** output (no `json_object`), sidestepping the "json must appear in input" gotcha — explain is markdown text, so follow that plain-text pattern, not the json_object tags pattern
+- Markdown rendered with the existing `react-markdown` + `remark-gfm` (as in `MarkdownEditor`); Explain view reuses `.markdown-preview` styling
+- See `docs/ai-integration-plan.md` for architectural context, but the spec here overrides it on specifics
+- Spec: `context/features/ai-explain-spec.md`
 
 ## History
 

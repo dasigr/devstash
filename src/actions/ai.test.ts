@@ -30,7 +30,7 @@ vi.mock("@/lib/db/user", () => ({ getCurrentUser }));
 vi.mock("@/lib/plan", () => ({ canUseAi }));
 vi.mock("@/lib/rate-limit", () => ({ checkRateLimit }));
 
-import { generateAutoTags, generateSummary } from "@/actions/ai";
+import { explainCode, generateAutoTags, generateSummary } from "@/actions/ai";
 
 const validInput = { title: "useDebounce hook", content: "export function..." };
 
@@ -264,6 +264,141 @@ describe("generateSummary action", () => {
     expect(result).toEqual({
       success: false,
       error: "Something went wrong generating the description.",
+    });
+  });
+});
+
+describe("explainCode action", () => {
+  const explainInput = {
+    title: "useDebounce hook",
+    content: "export function useDebounce() {}",
+    language: "typescript",
+  };
+
+  beforeEach(() => {
+    auth.mockReset();
+    isOpenAIConfigured.mockReset();
+    responsesCreate.mockReset();
+    getCurrentUser.mockReset();
+    canUseAi.mockReset();
+    checkRateLimit.mockReset();
+    // Defaults: signed-in Pro user, key configured, under the rate limit.
+    auth.mockResolvedValue({ user: { id: "user_1" } });
+    isOpenAIConfigured.mockReturnValue(true);
+    getCurrentUser.mockResolvedValue({ id: "user_1", isPro: true });
+    canUseAi.mockReturnValue(true);
+    checkRateLimit.mockResolvedValue({ success: true });
+    responsesCreate.mockResolvedValue({
+      output_text: "## What it does\n\nDebounces a value.",
+    });
+  });
+
+  it("rejects an unauthenticated caller without calling OpenAI", async () => {
+    auth.mockResolvedValue(null);
+
+    const result = await explainCode(explainInput);
+
+    expect(result).toEqual({ success: false, error: "You must be signed in." });
+    expect(responsesCreate).not.toHaveBeenCalled();
+  });
+
+  it("errors when OpenAI is not configured", async () => {
+    isOpenAIConfigured.mockReturnValue(false);
+
+    const result = await explainCode(explainInput);
+
+    expect(result).toEqual({
+      success: false,
+      error: "AI is not available right now.",
+    });
+    expect(responsesCreate).not.toHaveBeenCalled();
+  });
+
+  it("returns validation issues when content is empty", async () => {
+    const result = await explainCode({ title: "x", content: "" });
+
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.issues?.content).toBeDefined();
+    expect(responsesCreate).not.toHaveBeenCalled();
+  });
+
+  it("blocks a non-Pro user without calling OpenAI", async () => {
+    getCurrentUser.mockResolvedValue({ id: "user_1", isPro: false });
+    canUseAi.mockReturnValue(false);
+
+    const result = await explainCode(explainInput);
+
+    expect(result).toEqual({
+      success: false,
+      error: "AI code explanations are a Pro feature.",
+    });
+    expect(responsesCreate).not.toHaveBeenCalled();
+  });
+
+  it("blocks a rate-limited user without calling OpenAI", async () => {
+    checkRateLimit.mockResolvedValue({ success: false });
+
+    const result = await explainCode(explainInput);
+
+    expect(result).toEqual({
+      success: false,
+      error: "You've used your AI requests for now. Try again later.",
+    });
+    expect(checkRateLimit).toHaveBeenCalledWith("ai", "user_1");
+    expect(responsesCreate).not.toHaveBeenCalled();
+  });
+
+  it("returns the cleaned explanation on success (no json format)", async () => {
+    responsesCreate.mockResolvedValue({
+      output_text: "```markdown\n## What it does\n\nDebounces.\n```",
+    });
+
+    const result = await explainCode(explainInput);
+
+    expect(result).toEqual({
+      success: true,
+      data: "## What it does\n\nDebounces.",
+    });
+    const arg = responsesCreate.mock.calls[0][0];
+    expect(arg.model).toBe("gpt-5-nano");
+    expect(arg.text).toBeUndefined();
+    expect(arg.input).toContain("Language: typescript");
+  });
+
+  it("errors when the model returns an empty explanation", async () => {
+    responsesCreate.mockResolvedValue({ output_text: "   " });
+
+    const result = await explainCode(explainInput);
+
+    expect(result).toEqual({
+      success: false,
+      error: "The AI didn't return an explanation.",
+    });
+  });
+
+  it("truncates content to 4000 chars before the API call", async () => {
+    await explainCode({ title: "big", content: "x".repeat(4500) });
+
+    const arg = responsesCreate.mock.calls[0][0];
+    const xCount = (arg.input.match(/x/g) ?? []).length;
+    expect(xCount).toBe(4000);
+  });
+
+  it("omits the language line when none is provided", async () => {
+    await explainCode({ title: "cmd", content: "ls -la" });
+
+    const arg = responsesCreate.mock.calls[0][0];
+    expect(arg.input).not.toContain("Language:");
+  });
+
+  it("maps a thrown OpenAI error to a generic message", async () => {
+    responsesCreate.mockRejectedValue(new Error("boom"));
+
+    const result = await explainCode(explainInput);
+
+    expect(result).toEqual({
+      success: false,
+      error: "Something went wrong generating the explanation.",
     });
   });
 });

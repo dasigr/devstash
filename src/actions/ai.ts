@@ -6,6 +6,7 @@ import type { ActionResult } from "@/actions/items";
 import { auth } from "@/auth";
 import { parseSuggestedTags } from "@/lib/ai-tags";
 import { cleanSummary } from "@/lib/ai-summary";
+import { cleanExplanation } from "@/lib/ai-explain";
 import { getCurrentUser } from "@/lib/db/user";
 import { aiModel, isOpenAIConfigured, openai } from "@/lib/openai";
 import { canUseAi } from "@/lib/plan";
@@ -13,6 +14,8 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import {
   AUTO_TAG_CONTENT_LIMIT,
   autoTagSchema,
+  EXPLAIN_CONTENT_LIMIT,
+  explainCodeSchema,
   SUMMARY_CONTENT_LIMIT,
   summarySchema,
 } from "@/lib/validations/ai";
@@ -162,6 +165,82 @@ export async function generateSummary(
     return {
       success: false,
       error: "Something went wrong generating the description.",
+    };
+  }
+}
+
+const EXPLAIN_INSTRUCTIONS =
+  "You are a senior developer explaining code to a teammate. Given a code " +
+  "snippet or terminal command (with its title and language), write a clear, " +
+  "concise explanation of about 200 to 300 words covering what it does and the " +
+  "key concepts involved. Use GitHub-flavored Markdown — short paragraphs, " +
+  "inline `code`, and bullet lists where helpful. Do not repeat the whole input " +
+  "verbatim in a large code block. Respond with only the explanation.";
+
+/**
+ * Generate a concise Markdown explanation of a code snippet or command using
+ * OpenAI (Pro-only). Same pattern as generateSummary: auth → configured →
+ * validate → Pro gate → rate limit → call the model → normalize. Uses the
+ * Responses API with plain-text output (no json_object format); the result is
+ * cleaned Markdown, so no JSON parse and no "json in input" requirement.
+ */
+export async function explainCode(
+  input: unknown,
+): Promise<ActionResult<string>> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { success: false, error: "You must be signed in." };
+  }
+
+  if (!isOpenAIConfigured()) {
+    return { success: false, error: "AI is not available right now." };
+  }
+
+  const parsed = explainCodeSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: "Please check the highlighted fields.",
+      issues: z.flattenError(parsed.error).fieldErrors,
+    };
+  }
+
+  const user = await getCurrentUser();
+  const isPro = user?.isPro ?? false;
+  if (!canUseAi(isPro)) {
+    return { success: false, error: "AI code explanations are a Pro feature." };
+  }
+
+  const rate = await checkRateLimit("ai", session.user.id);
+  if (!rate.success) {
+    return {
+      success: false,
+      error: "You've used your AI requests for now. Try again later.",
+    };
+  }
+
+  const { title, content, language } = parsed.data;
+  const truncated = content.slice(0, EXPLAIN_CONTENT_LIMIT);
+  const languageLine = language ? `Language: ${language}\n` : "";
+  const promptInput = `Title: ${title}\n${languageLine}\nCode:\n${truncated}`;
+
+  try {
+    const response = await openai().responses.create({
+      model: aiModel(),
+      instructions: EXPLAIN_INSTRUCTIONS,
+      input: promptInput,
+    });
+
+    const explanation = cleanExplanation(response.output_text ?? "");
+    if (explanation.length === 0) {
+      return { success: false, error: "The AI didn't return an explanation." };
+    }
+    return { success: true, data: explanation };
+  } catch (error) {
+    console.error("Failed to explain code:", error);
+    return {
+      success: false,
+      error: "Something went wrong generating the explanation.",
     };
   }
 }
