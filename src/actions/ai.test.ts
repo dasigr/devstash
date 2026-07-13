@@ -30,7 +30,7 @@ vi.mock("@/lib/db/user", () => ({ getCurrentUser }));
 vi.mock("@/lib/plan", () => ({ canUseAi }));
 vi.mock("@/lib/rate-limit", () => ({ checkRateLimit }));
 
-import { generateAutoTags } from "@/actions/ai";
+import { generateAutoTags, generateSummary } from "@/actions/ai";
 
 const validInput = { title: "useDebounce hook", content: "export function..." };
 
@@ -136,6 +136,134 @@ describe("generateAutoTags action", () => {
     expect(result).toEqual({
       success: false,
       error: "Something went wrong generating tags.",
+    });
+  });
+});
+
+describe("generateSummary action", () => {
+  beforeEach(() => {
+    auth.mockReset();
+    isOpenAIConfigured.mockReset();
+    responsesCreate.mockReset();
+    getCurrentUser.mockReset();
+    canUseAi.mockReset();
+    checkRateLimit.mockReset();
+    // Defaults: signed-in Pro user, key configured, under the rate limit.
+    auth.mockResolvedValue({ user: { id: "user_1" } });
+    isOpenAIConfigured.mockReturnValue(true);
+    getCurrentUser.mockResolvedValue({ id: "user_1", isPro: true });
+    canUseAi.mockReturnValue(true);
+    checkRateLimit.mockResolvedValue({ success: true });
+    responsesCreate.mockResolvedValue({
+      output_text: "A React hook that debounces a value.",
+    });
+  });
+
+  it("rejects an unauthenticated caller without calling OpenAI", async () => {
+    auth.mockResolvedValue(null);
+
+    const result = await generateSummary(validInput);
+
+    expect(result).toEqual({ success: false, error: "You must be signed in." });
+    expect(responsesCreate).not.toHaveBeenCalled();
+  });
+
+  it("errors when OpenAI is not configured", async () => {
+    isOpenAIConfigured.mockReturnValue(false);
+
+    const result = await generateSummary(validInput);
+
+    expect(result).toEqual({
+      success: false,
+      error: "AI is not available right now.",
+    });
+    expect(responsesCreate).not.toHaveBeenCalled();
+  });
+
+  it("returns validation issues for a blank title", async () => {
+    const result = await generateSummary({ title: "" });
+
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.issues?.title).toBeDefined();
+    expect(responsesCreate).not.toHaveBeenCalled();
+  });
+
+  it("blocks a non-Pro user without calling OpenAI", async () => {
+    getCurrentUser.mockResolvedValue({ id: "user_1", isPro: false });
+    canUseAi.mockReturnValue(false);
+
+    const result = await generateSummary(validInput);
+
+    expect(result).toEqual({
+      success: false,
+      error: "AI summaries are a Pro feature.",
+    });
+    expect(responsesCreate).not.toHaveBeenCalled();
+  });
+
+  it("blocks a rate-limited user without calling OpenAI", async () => {
+    checkRateLimit.mockResolvedValue({ success: false });
+
+    const result = await generateSummary(validInput);
+
+    expect(result).toEqual({
+      success: false,
+      error: "You've used your AI requests for now. Try again later.",
+    });
+    expect(checkRateLimit).toHaveBeenCalledWith("ai", "user_1");
+    expect(responsesCreate).not.toHaveBeenCalled();
+  });
+
+  it("returns the cleaned summary on success (no json format)", async () => {
+    responsesCreate.mockResolvedValue({
+      output_text: '  "A React hook that\n debounces a value."  ',
+    });
+
+    const result = await generateSummary(validInput);
+
+    expect(result).toEqual({
+      success: true,
+      data: "A React hook that debounces a value.",
+    });
+    const arg = responsesCreate.mock.calls[0][0];
+    expect(arg.model).toBe("gpt-5-nano");
+    expect(arg.text).toBeUndefined();
+  });
+
+  it("errors when the model returns an empty description", async () => {
+    responsesCreate.mockResolvedValue({ output_text: "   " });
+
+    const result = await generateSummary(validInput);
+
+    expect(result).toEqual({
+      success: false,
+      error: "The AI didn't return a description.",
+    });
+  });
+
+  it("truncates content to 4000 chars before the API call", async () => {
+    await generateSummary({ title: "big", content: "x".repeat(4500) });
+
+    const arg = responsesCreate.mock.calls[0][0];
+    const xCount = (arg.input.match(/x/g) ?? []).length;
+    expect(xCount).toBe(4000);
+  });
+
+  it("sends title only when there is no content", async () => {
+    await generateSummary({ title: "Just a title" });
+
+    const arg = responsesCreate.mock.calls[0][0];
+    expect(arg.input).toBe("Title: Just a title");
+  });
+
+  it("maps a thrown OpenAI error to a generic message", async () => {
+    responsesCreate.mockRejectedValue(new Error("boom"));
+
+    const result = await generateSummary(validInput);
+
+    expect(result).toEqual({
+      success: false,
+      error: "Something went wrong generating the description.",
     });
   });
 });

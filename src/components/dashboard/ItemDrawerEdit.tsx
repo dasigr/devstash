@@ -25,6 +25,7 @@ import { LanguageSelect } from "@/components/dashboard/LanguageSelect";
 import { MarkdownEditor } from "@/components/dashboard/MarkdownEditor";
 import { CollectionPicker } from "@/components/dashboard/CollectionPicker";
 import { SuggestTags } from "@/components/dashboard/SuggestTags";
+import { SummarizeDescription } from "@/components/dashboard/SummarizeDescription";
 
 /** Capitalized singular type name for the header, e.g. "snippet" -> "Snippet". */
 function typeHeading(name: string): string {
@@ -188,7 +189,7 @@ export function ItemDrawerEdit({
           />
         </div>
 
-        <div className="space-y-1.5">
+        <div className="relative space-y-1.5">
           <label
             htmlFor="item-description"
             className="text-sm font-medium text-foreground"
@@ -201,6 +202,14 @@ export function ItemDrawerEdit({
             onChange={(e) => setDescription(e.target.value)}
             rows={2}
             placeholder="Optional"
+          />
+          <SummarizeDescription
+            isPro={isPro}
+            title={title}
+            content={content}
+            url={url}
+            fileName={item.fileName ?? undefined}
+            onApply={setDescription}
           />
         </div>
 
