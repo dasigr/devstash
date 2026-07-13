@@ -14,6 +14,9 @@ export const DASHBOARD_COLLECTIONS_LIMIT = 8;
 /** Cap on the dashboard's Recent Items grid — capped, not paged. */
 export const DASHBOARD_RECENT_ITEMS_LIMIT = 8;
 
+/** Cap on the /items index Files & Images preview sections (each links to its full page). */
+export const ITEMS_INDEX_PREVIEW_LIMIT = 20;
+
 /** Everything a paginated list and its controls need to render one page. */
 export interface PageInfo {
   /** The current page, 1-based and clamped into range. */

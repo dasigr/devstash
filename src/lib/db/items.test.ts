@@ -46,6 +46,7 @@ import {
   deleteItem,
   setItemFavorite,
   setItemPin,
+  getCardItemsPage,
   getFavoriteItems,
   getItemDetail,
   getItemFile,
@@ -54,6 +55,7 @@ import {
   getPinnedItems,
   getRecentItems,
   getSidebarItemTypes,
+  getTypePreview,
   updateItem,
 } from "@/lib/db/items";
 import {
@@ -856,5 +858,93 @@ describe("owner-scoped read queries", () => {
 
     expect(listing?.pagination.page).toBe(2);
     expect(findMany.mock.calls[0][0].skip).toBe(ITEMS_PER_PAGE);
+  });
+
+  it("getCardItemsPage excludes file & image types and scopes to the owner", async () => {
+    count.mockResolvedValue(1);
+    findMany.mockResolvedValue([rawListItem()]);
+
+    const { items, pagination } = await getCardItemsPage("user_1");
+
+    // The /items combined section shows every type except the two Pro file types.
+    const where = {
+      userId: "user_1",
+      itemType: { name: { notIn: ["file", "image"] } },
+    };
+    // The count must be scoped exactly like the rows, or the header/hasNext lie.
+    expect(count.mock.calls[0][0].where).toEqual(where);
+    expect(findMany.mock.calls[0][0].where).toEqual(where);
+    // Pinned first, then most-recent — same order as the type listings.
+    expect(findMany.mock.calls[0][0].orderBy).toEqual([
+      { isPinned: "desc" },
+      { updatedAt: "desc" },
+    ]);
+    expect(items).toHaveLength(1);
+    expect(pagination).toMatchObject({ page: 1, totalCount: 1 });
+  });
+
+  it("getCardItemsPage fetches only the requested page", async () => {
+    count.mockResolvedValue(50);
+    findMany.mockResolvedValue([]);
+
+    const { pagination } = await getCardItemsPage("user_1", 2);
+
+    const args = findMany.mock.calls[0][0];
+    expect(args.skip).toBe(ITEMS_PER_PAGE);
+    expect(args.take).toBe(ITEMS_PER_PAGE);
+    expect(pagination).toMatchObject({
+      page: 2,
+      totalCount: 50,
+      hasPrev: true,
+      hasNext: true,
+    });
+  });
+
+  it("getCardItemsPage clamps a page past the end to the last page", async () => {
+    count.mockResolvedValue(25);
+    findMany.mockResolvedValue([]);
+
+    const { pagination } = await getCardItemsPage("user_1", 99);
+
+    expect(pagination.page).toBe(2);
+    expect(findMany.mock.calls[0][0].skip).toBe(ITEMS_PER_PAGE);
+  });
+
+  it("getTypePreview scopes to owner + type, caps at the limit, and reports the true total", async () => {
+    typeFindFirst.mockResolvedValue({
+      id: "type_image",
+      name: "image",
+      color: "#ec4899",
+      icon: "Image",
+    });
+    count.mockResolvedValue(40);
+    findMany.mockResolvedValue([
+      rawListItem({
+        itemType: {
+          id: "type_image",
+          name: "image",
+          color: "#ec4899",
+          icon: "Image",
+        },
+      }),
+    ]);
+
+    const preview = await getTypePreview("images", "user_1", 20);
+
+    const where = { userId: "user_1", itemTypeId: "type_image" };
+    expect(count.mock.calls[0][0].where).toEqual(where);
+    expect(findMany.mock.calls[0][0].where).toEqual(where);
+    // Only a preview page is fetched, but the header reads the full total.
+    expect(findMany.mock.calls[0][0].take).toBe(20);
+    expect(preview?.total).toBe(40);
+    expect(preview?.items).toHaveLength(1);
+    expect(preview?.type.slug).toBe("images");
+  });
+
+  it("getTypePreview returns null for an unknown slug without querying items", async () => {
+    typeFindFirst.mockResolvedValue(null);
+    expect(await getTypePreview("bogustype", "user_1", 20)).toBeNull();
+    expect(findMany).not.toHaveBeenCalled();
+    expect(count).not.toHaveBeenCalled();
   });
 });
