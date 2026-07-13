@@ -16,6 +16,7 @@ import { ItemTypeBadge } from "@/components/dashboard/ItemTypeBadge";
 import { CodeEditor } from "@/components/dashboard/CodeEditor";
 import { MarkdownEditor } from "@/components/dashboard/MarkdownEditor";
 import { CollectionPicker } from "@/components/dashboard/CollectionPicker";
+import { SuggestTags } from "@/components/dashboard/SuggestTags";
 
 /** Capitalized singular type name for the header, e.g. "snippet" -> "Snippet". */
 function typeHeading(name: string): string {
@@ -42,10 +43,12 @@ function blankToNull(value: string): string | null {
  */
 export function ItemDrawerEdit({
   item,
+  isPro = false,
   onCancel,
   onSaved,
 }: {
   item: ItemDetail;
+  isPro?: boolean;
   onCancel: () => void;
   onSaved: (updated: ItemDetail) => void;
 }) {
@@ -71,6 +74,17 @@ export function ItemDrawerEdit({
   const useMarkdownEditor = isMarkdownType(typeName);
 
   const titleEmpty = title.trim() === "";
+
+  // Current tags as a clean list, and a helper to append one (deduped).
+  const tagList = tags
+    .split(",")
+    .map((t) => t.trim())
+    .filter((t) => t.length > 0);
+
+  function addTag(tag: string) {
+    if (tagList.some((t) => t.toLowerCase() === tag.toLowerCase())) return;
+    setTags(tagList.length > 0 ? `${tags.replace(/,\s*$/, "")}, ${tag}` : tag);
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -260,6 +274,13 @@ export function ItemDrawerEdit({
             placeholder="comma, separated, tags"
           />
           <p className="text-xs text-muted-foreground">Separate tags with commas.</p>
+          <SuggestTags
+            isPro={isPro}
+            title={title}
+            content={content}
+            existingTags={tagList}
+            onAccept={addTag}
+          />
         </div>
 
         <CollectionPicker

@@ -19,8 +19,11 @@ import { ItemDrawerEdit } from "@/components/dashboard/ItemDrawerEdit";
  */
 export function ItemDrawerProvider({
   children,
+  isPro = false,
 }: {
   children: React.ReactNode;
+  /** Whether the signed-in user is Pro — gates AI features in the edit form. */
+  isPro?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [item, setItem] = useState<ItemDetail | null>(null);
@@ -88,6 +91,7 @@ export function ItemDrawerProvider({
             <ItemDrawerEdit
               key={item.id}
               item={item}
+              isPro={isPro}
               onCancel={() => setEditing(false)}
               onSaved={(updated) => {
                 setItem(updated);
