@@ -52,11 +52,14 @@ function blankToNull(value: string): string | null {
 export function ItemDrawerEdit({
   item,
   isPro = false,
+  initialContent,
   onCancel,
   onSaved,
 }: {
   item: ItemDetail;
   isPro?: boolean;
+  /** Overrides the initial Content (e.g. an AI-optimized prompt). Falls back to the item's saved content. */
+  initialContent?: string;
   onCancel: () => void;
   onSaved: (updated: ItemDetail) => void;
 }) {
@@ -64,7 +67,7 @@ export function ItemDrawerEdit({
 
   const [title, setTitle] = useState(item.title);
   const [description, setDescription] = useState(item.description ?? "");
-  const [content, setContent] = useState(item.content ?? "");
+  const [content, setContent] = useState(initialContent ?? item.content ?? "");
   const [language, setLanguage] = useState(normalizeLanguage(item.language));
   const [url, setUrl] = useState(item.url ?? "");
   const [tags, setTags] = useState(item.tags.join(", "));

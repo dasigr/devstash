@@ -30,6 +30,11 @@ export function ItemDrawerProvider({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
   const [editing, setEditing] = useState(false);
+  // When set, edit mode seeds its Content field from this instead of the item's
+  // saved content — used to load an AI-optimized prompt into edit mode.
+  const [editContentOverride, setEditContentOverride] = useState<string | null>(
+    null,
+  );
   // Tracks the latest request so an earlier, slower fetch can't clobber a newer
   // one when the user opens items in quick succession.
   const requestId = useRef(0);
@@ -39,6 +44,7 @@ export function ItemDrawerProvider({
     setItem(null);
     setError(false);
     setEditing(false);
+    setEditContentOverride(null);
     setLoading(true);
 
     const reqId = ++requestId.current;
@@ -92,18 +98,30 @@ export function ItemDrawerProvider({
               key={item.id}
               item={item}
               isPro={isPro}
-              onCancel={() => setEditing(false)}
+              initialContent={editContentOverride ?? undefined}
+              onCancel={() => {
+                setEditing(false);
+                setEditContentOverride(null);
+              }}
               onSaved={(updated) => {
                 setItem(updated);
                 setEditing(false);
+                setEditContentOverride(null);
               }}
             />
           ) : (
             <ItemDrawerDetail
               item={item}
               isPro={isPro}
-              onEdit={() => setEditing(true)}
+              onEdit={() => {
+                setEditContentOverride(null);
+                setEditing(true);
+              }}
               onDeleted={() => setOpen(false)}
+              onUseOptimized={(optimized) => {
+                setEditContentOverride(optimized);
+                setEditing(true);
+              }}
             />
           )}
         </SheetContent>

@@ -30,7 +30,12 @@ vi.mock("@/lib/db/user", () => ({ getCurrentUser }));
 vi.mock("@/lib/plan", () => ({ canUseAi }));
 vi.mock("@/lib/rate-limit", () => ({ checkRateLimit }));
 
-import { explainCode, generateAutoTags, generateSummary } from "@/actions/ai";
+import {
+  explainCode,
+  generateAutoTags,
+  generateSummary,
+  optimizePrompt,
+} from "@/actions/ai";
 
 const validInput = { title: "useDebounce hook", content: "export function..." };
 
@@ -399,6 +404,135 @@ describe("explainCode action", () => {
     expect(result).toEqual({
       success: false,
       error: "Something went wrong generating the explanation.",
+    });
+  });
+});
+
+describe("optimizePrompt action", () => {
+  const optimizeInput = {
+    title: "Senior code reviewer",
+    content: "Review this code and suggest improvements.",
+  };
+
+  beforeEach(() => {
+    auth.mockReset();
+    isOpenAIConfigured.mockReset();
+    responsesCreate.mockReset();
+    getCurrentUser.mockReset();
+    canUseAi.mockReset();
+    checkRateLimit.mockReset();
+    // Defaults: signed-in Pro user, key configured, under the rate limit.
+    auth.mockResolvedValue({ user: { id: "user_1" } });
+    isOpenAIConfigured.mockReturnValue(true);
+    getCurrentUser.mockResolvedValue({ id: "user_1", isPro: true });
+    canUseAi.mockReturnValue(true);
+    checkRateLimit.mockResolvedValue({ success: true });
+    responsesCreate.mockResolvedValue({
+      output_text: "You are a senior code reviewer. Review the code below…",
+    });
+  });
+
+  it("rejects an unauthenticated caller without calling OpenAI", async () => {
+    auth.mockResolvedValue(null);
+
+    const result = await optimizePrompt(optimizeInput);
+
+    expect(result).toEqual({ success: false, error: "You must be signed in." });
+    expect(responsesCreate).not.toHaveBeenCalled();
+  });
+
+  it("errors when OpenAI is not configured", async () => {
+    isOpenAIConfigured.mockReturnValue(false);
+
+    const result = await optimizePrompt(optimizeInput);
+
+    expect(result).toEqual({
+      success: false,
+      error: "AI is not available right now.",
+    });
+    expect(responsesCreate).not.toHaveBeenCalled();
+  });
+
+  it("returns validation issues when content is empty", async () => {
+    const result = await optimizePrompt({ title: "x", content: "" });
+
+    expect(result.success).toBe(false);
+    if (!result.success) expect(result.issues?.content).toBeDefined();
+    expect(responsesCreate).not.toHaveBeenCalled();
+  });
+
+  it("blocks a non-Pro user without calling OpenAI", async () => {
+    getCurrentUser.mockResolvedValue({ id: "user_1", isPro: false });
+    canUseAi.mockReturnValue(false);
+
+    const result = await optimizePrompt(optimizeInput);
+
+    expect(result).toEqual({
+      success: false,
+      error: "AI prompt optimization is a Pro feature.",
+    });
+    expect(responsesCreate).not.toHaveBeenCalled();
+  });
+
+  it("blocks a rate-limited user without calling OpenAI", async () => {
+    checkRateLimit.mockResolvedValue({ success: false });
+
+    const result = await optimizePrompt(optimizeInput);
+
+    expect(result).toEqual({
+      success: false,
+      error: "You've used your AI requests for now. Try again later.",
+    });
+    expect(checkRateLimit).toHaveBeenCalledWith("ai", "user_1");
+    expect(responsesCreate).not.toHaveBeenCalled();
+  });
+
+  it("returns the cleaned optimized prompt on success (no json format)", async () => {
+    responsesCreate.mockResolvedValue({
+      output_text: "```text\nYou are a senior code reviewer.\n```",
+    });
+
+    const result = await optimizePrompt(optimizeInput);
+
+    expect(result).toEqual({
+      success: true,
+      data: "You are a senior code reviewer.",
+    });
+    const arg = responsesCreate.mock.calls[0][0];
+    expect(arg.model).toBe("gpt-5-nano");
+    expect(arg.text).toBeUndefined();
+    // Input carries the title as context but avoids mirror-able field labels.
+    expect(arg.input).toContain("Senior code reviewer");
+    expect(arg.input).toContain(optimizeInput.content);
+  });
+
+  it("errors when the model returns an empty prompt", async () => {
+    responsesCreate.mockResolvedValue({ output_text: "   " });
+
+    const result = await optimizePrompt(optimizeInput);
+
+    expect(result).toEqual({
+      success: false,
+      error: "The AI didn't return an optimized prompt.",
+    });
+  });
+
+  it("truncates content to 4000 chars before the API call", async () => {
+    await optimizePrompt({ title: "big", content: "x".repeat(4500) });
+
+    const arg = responsesCreate.mock.calls[0][0];
+    const xCount = (arg.input.match(/x/g) ?? []).length;
+    expect(xCount).toBe(4000);
+  });
+
+  it("maps a thrown OpenAI error to a generic message", async () => {
+    responsesCreate.mockRejectedValue(new Error("boom"));
+
+    const result = await optimizePrompt(optimizeInput);
+
+    expect(result).toEqual({
+      success: false,
+      error: "Something went wrong optimizing the prompt.",
     });
   });
 });
