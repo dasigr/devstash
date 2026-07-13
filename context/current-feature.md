@@ -1,16 +1,38 @@
-# Current Feature
+# Current Feature: `/items` — All Items index page
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+- Build the missing `/items` index page so the sidebar's existing **"All items"** link (`Sidebar.tsx:89` → `/items`, currently 404s) resolves to a real overview of all the signed-in user's items.
+- Three sections on the page:
+  - **Items** — combined card grid of the 5 text/url types (snippet, prompt, note, command, link), pinned-first then most-recently-updated, that **lazy-loads more** ("Load more" button + IntersectionObserver auto-load).
+  - **Images** — capped thumbnail gallery preview with a **"View all →"** link to `/items/images`.
+  - **Files** — capped single-column list preview with a **"View all →"** link to `/items/files`.
+- Reuse existing pieces (`itemSelect`, `toDashboardItem`, `getSystemItemType`, `buildPageInfo`, `ItemCardButton`, `ImageCardButton`, `FileListRow`, `SectionHeader`, the `/items/[type]` shell) — no proxy change (`/items/:path*` already covers `/items`).
+- Owner-scoped queries; free users (no files/images) see only the Items section. Tests for the new data functions + server action. Build/lint/test/browser-verified.
 
 ## Notes
 
-<!-- Additional context, constraints, or details from spec -->
+Full approved design: `~/.claude/plans/load-display-all-items-glittery-hoare.md`.
+
+Key decisions (confirmed with user):
+- Combined card grid for non-file/image types + dedicated Files/Images preview sections.
+- Files/Images sections are **capped** with "View all →" links to their existing paginated `/items/[type]` pages.
+- The combined Items section **lazy-loads** more (no single dedicated page to link into for a mixed-type list).
+
+New code:
+- `src/lib/db/items.ts` — `getCardItemsPage(userId, page)` (excludes file/image via `itemType.name notIn`, pinned-first, paginated) and `getTypePreview(slug, userId, limit)` (capped preview + total).
+- `src/lib/pagination.ts` — `ITEMS_INDEX_PREVIEW_LIMIT = 8`.
+- `src/actions/items.ts` — `loadMoreCardItems(page)` server action (`ActionResult<{ items, hasNext, nextPage }>`).
+- `src/app/items/page.tsx` — new index page (mirrors `/items/[type]` shell; `metadata.title = "All Items"`; no Pro-redirect).
+- `src/components/dashboard/LoadMoreItems.tsx` — client lazy-load grid (IO sentinel + "Load more" fallback).
+
+Verification caveat: the base seed has only 18 card items (< 20) and 0 files/images, so exercising the second lazy batch + the Images/Files sections needs throwaway rows / `isPro` flip **with explicit user approval** (per CLAUDE.md), reverted afterward.
+
+**Next:** run `/feature start` to branch and implement.
 
 ## History
 

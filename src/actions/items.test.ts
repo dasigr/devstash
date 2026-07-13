@@ -9,6 +9,7 @@ const {
   deleteItemQuery,
   setItemFavoriteQuery,
   setItemPinQuery,
+  getCardItemsPageQuery,
   getCurrentUser,
   canCreateItem,
 } = vi.hoisted(() => ({
@@ -18,6 +19,7 @@ const {
   deleteItemQuery: vi.fn(),
   setItemFavoriteQuery: vi.fn(),
   setItemPinQuery: vi.fn(),
+  getCardItemsPageQuery: vi.fn(),
   getCurrentUser: vi.fn(),
   canCreateItem: vi.fn(),
 }));
@@ -28,6 +30,7 @@ vi.mock("@/lib/db/items", () => ({
   deleteItem: deleteItemQuery,
   setItemFavorite: setItemFavoriteQuery,
   setItemPin: setItemPinQuery,
+  getCardItemsPage: getCardItemsPageQuery,
 }));
 vi.mock("@/lib/db/user", () => ({ getCurrentUser }));
 vi.mock("@/lib/plan", () => ({ canCreateItem }));
@@ -35,6 +38,7 @@ vi.mock("@/lib/plan", () => ({ canCreateItem }));
 import {
   createItem,
   deleteItem,
+  loadMoreCardItems,
   setItemFavorite,
   setItemPin,
   updateItem,
@@ -431,6 +435,63 @@ describe("setItemPin action", () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
 
     const result = await setItemPin("item_1", true);
+
+    expect(result).toEqual({
+      success: false,
+      error: "Something went wrong. Please try again.",
+    });
+  });
+});
+
+describe("loadMoreCardItems action", () => {
+  beforeEach(() => {
+    auth.mockReset();
+    getCardItemsPageQuery.mockReset();
+  });
+
+  it("rejects an unauthenticated caller without touching the DB", async () => {
+    auth.mockResolvedValue(null);
+
+    const result = await loadMoreCardItems("2");
+
+    expect(result).toEqual({ success: false, error: "You must be signed in." });
+    expect(getCardItemsPageQuery).not.toHaveBeenCalled();
+  });
+
+  it("delegates the parsed page and reports hasNext + the next page", async () => {
+    auth.mockResolvedValue({ user: { id: "user_1" } });
+    getCardItemsPageQuery.mockResolvedValue({
+      items: [{ id: "item_1" }],
+      pagination: { page: 2, hasNext: true },
+    });
+
+    const result = await loadMoreCardItems("2");
+
+    expect(getCardItemsPageQuery).toHaveBeenCalledWith("user_1", 2);
+    expect(result).toEqual({
+      success: true,
+      data: { items: [{ id: "item_1" }], hasNext: true, nextPage: 3 },
+    });
+  });
+
+  it("coerces a junk page param to page 1 via parsePageParam", async () => {
+    auth.mockResolvedValue({ user: { id: "user_1" } });
+    getCardItemsPageQuery.mockResolvedValue({
+      items: [],
+      pagination: { page: 1, hasNext: false },
+    });
+
+    await loadMoreCardItems("abc");
+
+    expect(getCardItemsPageQuery).toHaveBeenCalledWith("user_1", 1);
+  });
+
+  it("returns a generic error when the query throws", async () => {
+    auth.mockResolvedValue({ user: { id: "user_1" } });
+    getCardItemsPageQuery.mockRejectedValue(new Error("db down"));
+    vi.spyOn(console, "error").mockImplementation(() => {});
+
+    const result = await loadMoreCardItems("2");
 
     expect(result).toEqual({
       success: false,

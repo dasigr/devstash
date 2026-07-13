@@ -6,13 +6,15 @@ import { auth } from "@/auth";
 import {
   createItem as createItemQuery,
   deleteItem as deleteItemQuery,
+  getCardItemsPage,
   setItemFavorite as setItemFavoriteQuery,
   setItemPin as setItemPinQuery,
   updateItem as updateItemQuery,
 } from "@/lib/db/items";
-import type { ItemDetail } from "@/lib/db/items";
+import type { DashboardItem, ItemDetail } from "@/lib/db/items";
 import { getCurrentUser } from "@/lib/db/user";
 import { canCreateItem } from "@/lib/plan";
+import { parsePageParam } from "@/lib/pagination";
 import { createItemSchema, updateItemSchema } from "@/lib/validations/items";
 
 /** Standard server-action result — mirrors the API routes' `{ success }` shape. */
@@ -195,6 +197,43 @@ export async function deleteItem(
     return { success: true, data: { id: itemId } };
   } catch (error) {
     console.error("Failed to delete item:", error);
+    return { success: false, error: "Something went wrong. Please try again." };
+  }
+}
+
+/**
+ * Fetch the next page of the signed-in user's combined (non-file/image) items
+ * for the /items index "Items" section, which lazy-loads more. Coerces the page
+ * via `parsePageParam` (junk -> 1), delegates to the owner-scoped query, and
+ * reports whether a further page exists plus the page number to request next.
+ */
+export async function loadMoreCardItems(
+  page: unknown,
+): Promise<
+  ActionResult<{ items: DashboardItem[]; hasNext: boolean; nextPage: number }>
+> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { success: false, error: "You must be signed in." };
+  }
+
+  try {
+    const requestedPage = parsePageParam(page as string | string[] | undefined);
+    const { items, pagination } = await getCardItemsPage(
+      session.user.id,
+      requestedPage,
+    );
+    return {
+      success: true,
+      data: {
+        items,
+        hasNext: pagination.hasNext,
+        // The clamped page (not the raw request) is authoritative for "next".
+        nextPage: pagination.page + 1,
+      },
+    };
+  } catch (error) {
+    console.error("Failed to load more items:", error);
     return { success: false, error: "Something went wrong. Please try again." };
   }
 }

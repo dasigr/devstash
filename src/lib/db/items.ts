@@ -689,3 +689,70 @@ export const getItemsByType = cache(
     return { type, items: items.map(toDashboardItem), pagination };
   }
 );
+
+/**
+ * One page of the given user's items across every type **except** file & image
+ * (those get their own sections on the /items index), pinned-first then most
+ * recently updated. Used both for the index page's first SSR page and the
+ * "load more" server action, so the ordering stays consistent across batches.
+ *
+ * The count runs before the rows for the same reason as `getItemsByType`:
+ * `buildPageInfo` clamps an out-of-range page, and the clamped page decides
+ * `skip`.
+ */
+export async function getCardItemsPage(
+  userId: string,
+  page = 1,
+): Promise<{ items: DashboardItem[]; pagination: PageInfo }> {
+  // Excludes the file & image types by their (singular, lowercase) system names.
+  const where = { userId, itemType: { name: { notIn: ["file", "image"] } } };
+  const totalCount = await prisma.item.count({ where });
+  const pagination = buildPageInfo(page, ITEMS_PER_PAGE, totalCount);
+
+  const items = await prisma.item.findMany({
+    where,
+    orderBy: [{ isPinned: "desc" }, { updatedAt: "desc" }],
+    skip: pagination.skip,
+    take: pagination.take,
+    select: itemSelect,
+  });
+
+  return { items: items.map(toDashboardItem), pagination };
+}
+
+/** A resolved type plus a capped preview of the user's items and the true total. */
+export interface TypePreview {
+  type: ItemTypeListing["type"];
+  items: DashboardItem[];
+  /** Total items of this type the user owns (drives the header + "View all"). */
+  total: number;
+}
+
+/**
+ * A capped preview of the given user's items of one type, for the /items index
+ * Files & Images sections. Returns the resolved type, the first `limit` items
+ * (pinned-first, then most recent), and the true total (so the section header
+ * and the "View all" link can reflect counts beyond the preview). Null when the
+ * slug doesn't match a system type.
+ */
+export async function getTypePreview(
+  slug: string,
+  userId: string,
+  limit: number,
+): Promise<TypePreview | null> {
+  const type = await getSystemItemType(slug);
+  if (!type) return null;
+
+  const where = { userId, itemTypeId: type.id };
+  const [total, items] = await Promise.all([
+    prisma.item.count({ where }),
+    prisma.item.findMany({
+      where,
+      orderBy: [{ isPinned: "desc" }, { updatedAt: "desc" }],
+      take: limit,
+      select: itemSelect,
+    }),
+  ]);
+
+  return { type, items: items.map(toDashboardItem), total };
+}
