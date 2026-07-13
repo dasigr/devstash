@@ -22,7 +22,9 @@ interface SuggestTagsProps {
 /**
  * Pro-only "Suggest tags" control shared by the create dialog and the drawer
  * edit form. Renders nothing for free users (UI gating; the server action
- * gates too). On click it asks OpenAI for freeform tags and shows them as
+ * gates too). The button is absolutely positioned to the top-right of its
+ * `relative` parent (aligned with the Tags label); the suggestion badges
+ * render below. On click it asks OpenAI for freeform tags and shows them as
  * badges with accept (check) / reject (X) controls.
  */
 export function SuggestTags({
@@ -80,13 +82,13 @@ export function SuggestTags({
   }
 
   return (
-    <div className="mt-2 space-y-2">
+    <>
       <Button
         type="button"
         variant="ghost"
         size="xs"
         disabled={pending || title.trim().length === 0}
-        className="text-muted-foreground hover:text-foreground"
+        className="absolute top-0 right-0 text-muted-foreground hover:text-foreground"
         onClick={handleSuggest}
       >
         {pending ? (
@@ -98,7 +100,7 @@ export function SuggestTags({
       </Button>
 
       {suggestions.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
+        <div className="mt-2 flex flex-wrap gap-1.5">
           {suggestions.map((tag) => (
             <Badge
               key={tag}
@@ -130,6 +132,6 @@ export function SuggestTags({
           ))}
         </div>
       )}
-    </div>
+    </>
   );
 }
