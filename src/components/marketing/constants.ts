@@ -175,23 +175,20 @@ export const FOOTER_COLUMNS: {
     links: [
       { label: "Features", href: "#features" },
       { label: "Pricing", href: "#pricing" },
-      { label: "Changelog", href: "#" },
     ],
   },
   {
     heading: "Company",
     links: [
-      { label: "About", href: "#" },
-      { label: "Blog", href: "#" },
-      { label: "Careers", href: "#" },
+      { label: "About", href: "/about" },
+      { label: "Blog", href: "/blogs" },
     ],
   },
   {
     heading: "Resources",
     links: [
-      { label: "Docs", href: "#" },
-      { label: "Support", href: "#" },
-      { label: "Community", href: "#" },
+      { label: "Docs", href: "/docs" },
+      { label: "Support", href: "/support" },
     ],
   },
 ];
