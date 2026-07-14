@@ -234,6 +234,120 @@ export const ABOUT_VALUES: MarketingFeature[] = [
   },
 ];
 
+/** Author byline shared across every blog post. */
+export const BLOG_AUTHOR = "Romualdo Dasig";
+
+/** Derive up-to-two-letter initials from a name ("Romualdo Dasig" → "RD"). */
+export function initials(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word[0]!.toUpperCase())
+    .join("");
+}
+
+export interface BlogPost {
+  /** kebab-case, used in the `/blogs/<slug>` route. */
+  slug: string;
+  title: string;
+  excerpt: string;
+  /** e.g. "AI", "Snippets", "Featured · Workflows". */
+  category: string;
+  /** CSS var reference into the marketing accent palette (`var(--m-*)`). */
+  accent: string;
+  author: string;
+  date: string;
+  readTime: string;
+  featured?: boolean;
+}
+
+/** Blog listing posts (1 featured + 6 grid), copied verbatim from the prototype. */
+export const BLOG_POSTS: BlogPost[] = [
+  {
+    slug: "stop-re-deriving-that-docker-command",
+    title: "Stop re-deriving that Docker command for the fifth time",
+    excerpt:
+      "The commands you run once a month are the ones you never remember. Here's a system for stashing them so they're one search away — forever.",
+    category: "Featured · Workflows",
+    accent: "var(--m-command)",
+    author: BLOG_AUTHOR,
+    date: "Jul 10, 2026",
+    readTime: "6 min read",
+    featured: true,
+  },
+  {
+    slug: "a-prompt-library-that-actually-pays-off",
+    title: "A prompt library that actually pays off",
+    excerpt:
+      "Version the prompts that work, tag them, and pull the right one in seconds instead of scrolling chat history.",
+    category: "AI",
+    accent: "var(--m-prompt)",
+    author: BLOG_AUTHOR,
+    date: "Jul 6, 2026",
+    readTime: "5 min read",
+  },
+  {
+    slug: "organizing-snippets-with-collections",
+    title: "Organizing snippets with collections",
+    excerpt:
+      "One snippet can live in React Patterns and Interview Prep at once. Here's how to structure collections that scale.",
+    category: "Snippets",
+    accent: "var(--m-snippet)",
+    author: BLOG_AUTHOR,
+    date: "Jul 2, 2026",
+    readTime: "4 min read",
+  },
+  {
+    slug: "finding-anything-with-the-command-palette",
+    title: "Finding anything with the ⌘K palette",
+    excerpt:
+      "Search across content, titles, tags, and types. A tour of the command palette and the tricks that make it fast.",
+    category: "Search",
+    accent: "var(--m-url)",
+    author: BLOG_AUTHOR,
+    date: "Jun 27, 2026",
+    readTime: "3 min read",
+  },
+  {
+    slug: "markdown-notes-done-right",
+    title: "Markdown notes, done right",
+    excerpt:
+      "A write/preview editor for notes and prompts, with GFM support and syntax-highlighted code blocks.",
+    category: "Product",
+    accent: "var(--m-note)",
+    author: BLOG_AUTHOR,
+    date: "Jun 21, 2026",
+    readTime: "4 min read",
+  },
+  {
+    slug: "keep-files-beside-the-code",
+    title: "Keep files beside the code they belong to",
+    excerpt:
+      "Upload context files, images, and docs, and stash them right next to the snippets and prompts that use them.",
+    category: "Pro",
+    accent: "var(--m-image)",
+    author: BLOG_AUTHOR,
+    date: "Jun 15, 2026",
+    readTime: "5 min read",
+  },
+  {
+    slug: "from-bash-history-to-a-real-command-stash",
+    title: "From bash history to a real command stash",
+    excerpt:
+      "Your shell history is a graveyard. Promote the commands worth keeping into a searchable, taggable home.",
+    category: "Workflows",
+    accent: "var(--m-command)",
+    author: BLOG_AUTHOR,
+    date: "Jun 9, 2026",
+    readTime: "6 min read",
+  },
+];
+
+export function getBlogPost(slug: string): BlogPost | undefined {
+  return BLOG_POSTS.find((post) => post.slug === slug);
+}
+
 /** About "Who it's for" cards — no icon tile. */
 export const ABOUT_AUDIENCES: {
   title: string;
