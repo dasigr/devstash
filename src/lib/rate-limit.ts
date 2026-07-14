@@ -15,6 +15,8 @@ export const RATE_LIMITS = {
   forgotPassword: { limit: 3, window: "1 h", prefix: "rl:forgot" },
   resetPassword: { limit: 5, window: "15 m", prefix: "rl:reset" },
   resendVerification: { limit: 3, window: "15 m", prefix: "rl:resend" },
+  // Public contact form, keyed by IP to curb spam.
+  support: { limit: 3, window: "1 h", prefix: "rl:support" },
   // AI actions are keyed by userId (AI costs money — limit per account, not IP).
   ai: { limit: 20, window: "1 h", prefix: "rl:ai" },
 } as const satisfies Record<

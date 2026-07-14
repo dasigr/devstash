@@ -1,10 +1,14 @@
+import { createElement, Fragment, type ReactNode } from "react";
 import {
+  BookOpen,
   Code,
+  Mail,
   Search,
   Sparkles,
   Terminal,
   FileText,
   Layers,
+  Users,
   Zap,
   type LucideIcon,
 } from "lucide-react";
@@ -555,5 +559,92 @@ export const ABOUT_AUDIENCES: {
     description:
       "Collect patterns, boilerplates, and API examples into collections you actually revisit.",
     accent: "var(--m-url)",
+  },
+];
+
+/** Support "quick help" cards. `Join the community` is a placeholder stub. */
+export const SUPPORT_HELP: {
+  icon: LucideIcon;
+  title: string;
+  description: string;
+  href: string;
+}[] = [
+  {
+    icon: BookOpen,
+    title: "Read the docs",
+    description: "Guides for item types, collections, search, and AI features.",
+    href: "/docs",
+  },
+  {
+    icon: Users,
+    title: "Join the community",
+    description:
+      "Trade workflows and tips with other developers using DevStash.",
+    href: "#",
+  },
+  {
+    icon: Mail,
+    title: "Email the team",
+    description:
+      "Can't find an answer? Send us a message and we'll get back to you.",
+    href: "#contact",
+  },
+];
+
+/** Inline `<code>` for FAQ answers, styled for the marketing surface. */
+function faqCode(text: string): ReactNode {
+  return createElement(
+    "code",
+    {
+      className:
+        "rounded-md bg-[var(--m-surface-2)] px-1.5 py-0.5 text-[0.85em] text-[var(--m-text)]",
+    },
+    text,
+  );
+}
+
+/** Support FAQ — copied verbatim from the prototype. */
+export const SUPPORT_FAQS: { question: string; answer: ReactNode }[] = [
+  {
+    question: "What is DevStash?",
+    answer:
+      "DevStash is one fast, searchable, AI-enhanced hub for all your developer knowledge — snippets, prompts, commands, notes, links, and files — so you stop hunting across VS Code, Notion, chat history, and bookmarks.",
+  },
+  {
+    question: "Is there a free plan?",
+    answer:
+      "Yes. The Free plan includes up to 50 items, 3 collections, all text and link types, basic search, and dark mode — free forever, no credit card required.",
+  },
+  {
+    question: "How much does Pro cost?",
+    answer:
+      "Pro is $8/month, or $72/year (which works out to $6/month). It unlocks unlimited items and collections, file & image uploads, full search, all AI features, and export.",
+  },
+  {
+    question: "What do I get with Pro?",
+    answer:
+      "Unlimited items and collections, file & image uploads, full search, AI auto-tagging, summaries, “explain this code”, the prompt optimizer, JSON/ZIP export, and priority support.",
+  },
+  {
+    question: "Which item types are supported?",
+    answer:
+      "Seven built-in types: Snippet, Prompt, Note, Command, and Link on every plan, plus File and Image on Pro. Each has its own color and icon used consistently across the app.",
+  },
+  {
+    question: "How does search work?",
+    answer: createElement(
+      Fragment,
+      null,
+      "Press ",
+      faqCode("⌘K"),
+      " (or ",
+      faqCode("Ctrl K"),
+      ") to open the command palette and search across content, titles, tags, and types. Results are grouped into Items and Collections and ranked by relevance.",
+    ),
+  },
+  {
+    question: "Can I sign in with GitHub?",
+    answer:
+      "Yes. You can sign in with email and password or with GitHub OAuth — whichever you prefer.",
   },
 ];
