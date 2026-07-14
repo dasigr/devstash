@@ -1,16 +1,30 @@
-# Current Feature
+# Current Feature: Support Page
 
 ## Status
 
-Not Started
+In Progress
 
 ## Goals
 
-<!-- Bullet points of what success looks like -->
+- Turn the static prototype `prototypes/homepage/support.html` into the real Support page at `/support`, replacing the placeholder `src/app/support/page.tsx` — rebuilt as React server components + one small client `ContactForm`, using Tailwind + the existing marketing primitives (5th marketing-page rebuild, mirroring About/Blog/Docs).
+- Render four blocks (each wrapped in `Reveal`): a **page header** (pill + gradient `<h1>` "How can we *help?*" + subtitle), a **quick-help card row** (3 `HelpCard`s), an **FAQ list** (7 Q&As, verbatim), and a **contact form** (`#contact` anchor).
+- Keep the route public: server component in `MarketingShell`, no `auth()` redirect, no `proxy.ts` matcher change; `metadata` title "Support" + prototype description.
+- Wire the contact form to a **real `POST /api/support`** route: Zod `supportSchema`, Resend-backed `sendSupportEmail` (replyTo the sender, to `SUPPORT_EMAIL`), IP rate-limit (3/1h), `z.flattenError` 400 with `issues`, generic 500 on delivery failure. Not in the proxy matcher.
+- Add `SUPPORT_HELP` + `SUPPORT_FAQS` data arrays to `constants.ts`; new `HelpCard`, `FaqItem`, `ContactForm` components under `src/components/marketing/`.
+- Style with Tailwind arbitrary values + `--m-*` tokens only — **no new `globals.css` classes**; responsive (help cards 3→1, form row 2→1, no overflow at 390px).
+- Add `src/lib/validations/support.test.ts` (Vitest) for `supportSchema`; existing suite must still pass. Verify test/tsc/lint/build + browser (`/support` static, `/api/support` `ƒ`, `ƒ Proxy` intact).
 
 ## Notes
 
-<!-- Additional context, constraints, or details from spec -->
+- **Authoritative spec:** `context/features/support-page-spec.md`. Mirrors the completed About / Blog Listing/Detail / Documentation rebuilds — same `MarketingShell`, `--m-*` tokens, `Reveal`, pill + gradient-text, and `constants.ts` data-array pattern. Unlike those, the contact form hits a real Resend-backed API route.
+- **Components:** `HelpCard` (server — centered brand-tinted icon tile + h3 + p in a `next/link`; props `{ icon, title, description, href }`; port `.help-card`); `FaqItem` (server — h3 with a monospace brand `Q.` marker `aria-hidden` + question, p answer that may hold inline `<code>`; props `{ question, answer: ReactNode }`); `ContactForm` (**client** — controlled Name/Email/Subject/Message → `fetch("/api/support")`, disable while pending, `toastManager` success/error, reset on success, inline field errors from `issues`; mirror `ForgotPasswordForm`/`SignInForm`).
+- **Page composition:** page header, quick help (3 cards, grid 3→1), FAQ (section head + 7 items in `max-w-[760px]`), contact (section head `id="contact"` + `scroll-mt` + `<ContactForm />`). Reuse a small local `SectionHead` helper (centered, `max-w-[640px]`, h2 + dim sub), as About/Docs did.
+- **`SUPPORT_HELP`** (`{ icon: LucideIcon; title; description; href }[]`): Read the docs (`BookOpen`/`FileText`) → `/docs`; Join the community (`Users`) → `#` (placeholder stub); Email the team (`Mail`) → `#contact`.
+- **`SUPPORT_FAQS`** (`{ question; answer: ReactNode }[]`): 7 Q&As copied verbatim — What is DevStash / free plan / Pro cost ($8/mo, $72/yr) / Pro features / item types / How does search work (keep inline `<code>⌘K</code>` + `<code>Ctrl K</code>`) / GitHub sign-in. `answer` is `ReactNode` so the search entry embeds `<code>`.
+- **Contact API:** `src/lib/validations/support.ts` → `supportSchema` (name `.trim().min(1).max(100)`, email `.trim().toLowerCase().email()`, subject `.trim().min(1).max(200)`, message `.trim().min(1).max(5000)`; export `SupportInput`). `sendSupportEmail({ name, email, subject, message })` in `src/lib/email.ts` (reuse `resend` + `FROM`; to `SUPPORT_EMAIL` env + fallback const; `replyTo: email`; subject `[Support] ${subject}`; inline HTML like `verificationEmailHtml`; throws on Resend error). `support` entry in `RATE_LIMITS` (`{ limit: 3, window: "1 h", prefix: "rl:support" }`, keyed by IP via `getClientIp`). Route `POST /api/support` modeled on `forgot-password/route.ts`: rate-limit → parse JSON → `safeParse` 400 `{ success:false, issues }` → `sendSupportEmail` try/catch → `{ success:true }` / generic 500.
+- **Styling:** port `styles.css:963–1044` to Tailwind arbitrary values. Help cards `grid gap-5 md:grid-cols-3`, card surface + hover lift/brand glow, icon tile `size-12 rounded-xl grid place-items-center text-[var(--m-brand)] bg-[rgba(99,102,241,0.14)]`. FAQ `mx-auto max-w-[760px] flex flex-col gap-3.5`, item surface card, h3 with `flex-shrink-0 font-mono text-[var(--m-brand)]` `Q.` marker. Contact form `mx-auto max-w-[620px]` surface card `p-[30px]`, `.form-row` `grid gap-4 sm:grid-cols-2`, fields label + input/textarea (`bg-[var(--m-bg)] border-[var(--m-border-2)] rounded-[10px]`, brand focus ring, textarea `resize-y min-h-[130px]`), submit `marketingButton({ variant:"primary", size:"lg", block:true })`. **No ShadCN Input/Textarea** (use `--m-*` tokens, consistent with prior four pages).
+- **Files:** New — `src/app/support/page.tsx` (replace placeholder), `src/app/api/support/route.ts`, `src/lib/validations/support.ts`, `src/lib/validations/support.test.ts`, `HelpCard.tsx`, `FaqItem.tsx`, `ContactForm.tsx`. Edit — `constants.ts`, `src/lib/email.ts`, `src/lib/rate-limit.ts`, `.env.example`. Reuse — `MarketingShell`, `Reveal`, `marketing-button.ts`, Hero pill/gradient, `toastManager`, `getClientIp`/`checkRateLimit`/`rateLimitResponse`, the `z.flattenError` 400 pattern.
+- **Out of scope:** other interior pages, storing tickets in the DB, attachments/captcha beyond rate limiting, real content beyond the prototype copy.
 
 ## History
 

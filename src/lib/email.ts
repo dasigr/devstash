@@ -7,6 +7,11 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 const FROM = "DevStash <noreply@devstash.a5project.com>";
 
+// Where contact-form submissions are delivered. Overridable via env so the
+// support inbox can change without a code change; falls back to a sensible
+// default address.
+const SUPPORT_TO = process.env.SUPPORT_EMAIL || "support@a5project.com";
+
 interface SendVerificationEmailArgs {
   to: string;
   /** Absolute URL the recipient clicks to verify their address. */
@@ -57,6 +62,70 @@ export async function sendPasswordResetEmail({
   if (error) {
     throw new Error(`Resend failed to send password reset email: ${error.message}`);
   }
+}
+
+interface SendSupportEmailArgs {
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+}
+
+/**
+ * Send a contact-form submission to the support inbox. `replyTo` is set to the
+ * sender so a reply from the inbox reaches them directly. Throws if Resend
+ * returns an error so the caller can decide how to surface a delivery failure.
+ */
+export async function sendSupportEmail({
+  name,
+  email,
+  subject,
+  message,
+}: SendSupportEmailArgs): Promise<void> {
+  const { error } = await resend.emails.send({
+    from: FROM,
+    to: SUPPORT_TO,
+    replyTo: email,
+    subject: `[Support] ${subject}`,
+    html: supportEmailHtml({ name, email, subject, message }),
+  });
+
+  if (error) {
+    throw new Error(`Resend failed to send support email: ${error.message}`);
+  }
+}
+
+/** Escape user-supplied text before interpolating it into the email HTML. */
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function supportEmailHtml({
+  name,
+  email,
+  subject,
+  message,
+}: SendSupportEmailArgs): string {
+  return `
+  <div style="font-family: -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 32px 24px; color: #0a0a0a;">
+    <h1 style="font-size: 20px; margin: 0 0 20px;">New support message</h1>
+    <p style="font-size: 14px; line-height: 1.6; margin: 0 0 6px; color: #737373;">From</p>
+    <p style="font-size: 14px; line-height: 1.6; margin: 0 0 16px; color: #0a0a0a;">
+      ${escapeHtml(name)} &lt;${escapeHtml(email)}&gt;
+    </p>
+    <p style="font-size: 14px; line-height: 1.6; margin: 0 0 6px; color: #737373;">Subject</p>
+    <p style="font-size: 14px; line-height: 1.6; margin: 0 0 16px; color: #0a0a0a;">
+      ${escapeHtml(subject)}
+    </p>
+    <p style="font-size: 14px; line-height: 1.6; margin: 0 0 6px; color: #737373;">Message</p>
+    <div style="font-size: 14px; line-height: 1.6; margin: 0; color: #0a0a0a; white-space: pre-wrap; border-left: 3px solid #e5e5e5; padding-left: 14px;">${escapeHtml(
+      message,
+    )}</div>
+  </div>`;
 }
 
 function verificationEmailHtml(verifyUrl: string): string {
