@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>About — DevStash</title>
+  <meta name="description" content="Why we built DevStash: one fast, searchable, AI-enhanced hub for all the developer knowledge that scatters across your tools." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- ============ NAV ============ -->
+  <header class="nav" id="nav">
+    <div class="nav__inner container">
+      <a href="index.html" class="brand" aria-label="DevStash home">
+        <span class="brand__mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 7l8-4 8 4-8 4-8-4z" />
+            <path d="M4 12l8 4 8-4" />
+            <path d="M4 17l8 4 8-4" />
+          </svg>
+        </span>
+        <span class="brand__name">DevStash</span>
+      </a>
+
+      <nav class="nav__links" aria-label="Primary">
+        <a href="index.html#features">Features</a>
+        <a href="index.html#pricing">Pricing</a>
+        <a href="about.html" aria-current="page">About</a>
+        <a href="blog.html">Blog</a>
+        <a href="docs.html">Docs</a>
+        <a href="support.html">Support</a>
+      </nav>
+
+      <div class="nav__actions">
+        <a href="#" class="btn btn--ghost">Sign In</a>
+        <a href="#" class="btn btn--primary">Get Started</a>
+      </div>
+
+      <button class="nav__toggle" id="navToggle" aria-label="Toggle menu" aria-expanded="false">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <!-- ============ HEADER ============ -->
+    <section class="page-header">
+      <div class="container reveal">
+        <span class="pill">Our story</span>
+        <h1>Built for developers who<br /><span class="gradient-text">lose things</span></h1>
+        <p class="page-header__sub">
+          Snippets, prompts, commands, notes, links, and files — the essentials you
+          rely on every day scatter across too many tools. DevStash exists to pull
+          them back into one place.
+        </p>
+      </div>
+    </section>
+
+    <!-- ============ MISSION ============ -->
+    <section class="section" style="padding-top: 24px;">
+      <div class="container">
+        <div class="about-mission prose reveal">
+          <h2>The problem we kept hitting</h2>
+          <p>
+            Code snippets live in VS Code and Notion. The prompts that actually work
+            are buried in chat history. That one Docker incantation is in a
+            <code>.txt</code> file — or your shell history, if you're lucky. Useful
+            links rot in browser bookmarks. Context files sit forgotten in project
+            folders.
+          </p>
+          <p>
+            The result is constant <strong>context switching</strong>, quietly
+            <strong>lost knowledge</strong>, and <strong>inconsistent workflows</strong>.
+            Every developer we talked to had their own patchwork of half-solutions —
+            and none of them were searchable in one place.
+          </p>
+          <blockquote>
+            DevStash is one fast, searchable, AI-enhanced hub for all your developer
+            knowledge. Stash everything in one place, grab it in seconds.
+          </blockquote>
+          <p>
+            No more hunting across VS Code, Notion, chat histories, bookmarks, gists,
+            and scratch files. Save it once, find it instantly, and let AI handle the
+            tedious tagging and summarizing.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ STATS ============ -->
+    <section class="section" style="padding-top: 0;">
+      <div class="container">
+        <div class="stats-row reveal">
+          <div class="stat-card">
+            <div class="stat-card__num">7</div>
+            <div class="stat-card__label">Built-in item types</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card__num">1</div>
+            <div class="stat-card__label">Search for everything</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card__num">&infin;</div>
+            <div class="stat-card__label">Collections on Pro</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card__num">0</div>
+            <div class="stat-card__label">Context switching</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ VALUES ============ -->
+    <section class="section" style="padding-top: 0;">
+      <div class="container">
+        <div class="section__head reveal">
+          <h2>What we optimize for</h2>
+          <p>Every decision comes back to these four principles.</p>
+        </div>
+        <div class="feature-grid">
+          <article class="feature-card reveal" style="--c:var(--c-snippet)">
+            <div class="feature-card__icon">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h7l-1 8 10-12h-7l1-8z"/></svg>
+            </div>
+            <h3>Fast</h3>
+            <p>Quick to create, quick to open. A ⌘K palette that jumps to anything without breaking flow.</p>
+          </article>
+          <article class="feature-card reveal" style="--c:var(--c-command)">
+            <div class="feature-card__icon">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+            </div>
+            <h3>Searchable</h3>
+            <p>Search across content, titles, tags, and types. If you stashed it, you can find it.</p>
+          </article>
+          <article class="feature-card reveal" style="--c:var(--c-prompt)">
+            <div class="feature-card__icon">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z"/></svg>
+            </div>
+            <h3>AI-enhanced</h3>
+            <p>Auto-tags, summaries, code explanations, and a prompt optimizer — right where you work.</p>
+          </article>
+          <article class="feature-card reveal" style="--c:var(--c-note)">
+            <div class="feature-card__icon">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 18l6-6-6-6"/><path d="M8 6l-6 6 6 6"/></svg>
+            </div>
+            <h3>Developer-first</h3>
+            <p>Dark mode by default, syntax highlighting, markdown, and keyboard-driven from end to end.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ WHO IT'S FOR ============ -->
+    <section class="section" style="padding-top: 0;">
+      <div class="container">
+        <div class="section__head reveal">
+          <h2>Who it's for</h2>
+          <p>DevStash fits however you build.</p>
+        </div>
+        <div class="feature-grid">
+          <article class="feature-card reveal" style="--c:var(--c-snippet)">
+            <h3>The everyday developer</h3>
+            <p>A fast way to grab snippets, prompts, commands, and links without leaving your flow.</p>
+          </article>
+          <article class="feature-card reveal" style="--c:var(--c-prompt)">
+            <h3>The AI-first developer</h3>
+            <p>Save prompts, contexts, workflows, and system messages — versioned and searchable.</p>
+          </article>
+          <article class="feature-card reveal" style="--c:var(--c-note)">
+            <h3>The content creator</h3>
+            <p>Store code blocks, explanations, and course notes in one organized, reusable place.</p>
+          </article>
+          <article class="feature-card reveal" style="--c:var(--c-url)">
+            <h3>The full-stack builder</h3>
+            <p>Collect patterns, boilerplates, and API examples into collections you actually revisit.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ CTA ============ -->
+    <section class="cta-band">
+      <div class="container reveal">
+        <h2>Ready to Organize Your Knowledge?</h2>
+        <p>Everything you know as a developer, in one fast, searchable home.</p>
+        <a href="#" class="btn btn--primary btn--lg">Start stashing — free</a>
+      </div>
+    </section>
+  </main>
+
+  <!-- ============ FOOTER ============ -->
+  <footer class="footer">
+    <div class="container footer__inner">
+      <div class="footer__brand">
+        <a href="index.html" class="brand">
+          <span class="brand__mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7l8-4 8 4-8 4-8-4z"/><path d="M4 12l8 4 8-4"/><path d="M4 17l8 4 8-4"/></svg>
+          </span>
+          <span class="brand__name">DevStash</span>
+        </a>
+        <p class="footer__tag">One home for all your developer knowledge.</p>
+      </div>
+
+      <nav class="footer__cols" aria-label="Footer">
+        <div class="footer__col">
+          <h4>Product</h4>
+          <a href="index.html#features">Features</a>
+          <a href="index.html#pricing">Pricing</a>
+          <a href="#">Changelog</a>
+        </div>
+        <div class="footer__col">
+          <h4>Company</h4>
+          <a href="about.html">About</a>
+          <a href="blog.html">Blog</a>
+          <a href="#">Careers</a>
+        </div>
+        <div class="footer__col">
+          <h4>Resources</h4>
+          <a href="docs.html">Docs</a>
+          <a href="support.html">Support</a>
+          <a href="#">Community</a>
+        </div>
+      </nav>
+    </div>
+    <div class="container footer__bottom">
+      <p>&copy; <span id="year">2026</span> DevStash. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

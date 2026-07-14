@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Blog — DevStash</title>
+  <meta name="description" content="Workflows, tips, and product updates from the DevStash team — on organizing snippets, prompts, commands, and everything developers stash." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- ============ NAV ============ -->
+  <header class="nav" id="nav">
+    <div class="nav__inner container">
+      <a href="index.html" class="brand" aria-label="DevStash home">
+        <span class="brand__mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 7l8-4 8 4-8 4-8-4z" />
+            <path d="M4 12l8 4 8-4" />
+            <path d="M4 17l8 4 8-4" />
+          </svg>
+        </span>
+        <span class="brand__name">DevStash</span>
+      </a>
+
+      <nav class="nav__links" aria-label="Primary">
+        <a href="index.html#features">Features</a>
+        <a href="index.html#pricing">Pricing</a>
+        <a href="about.html">About</a>
+        <a href="blog.html" aria-current="page">Blog</a>
+        <a href="docs.html">Docs</a>
+        <a href="support.html">Support</a>
+      </nav>
+
+      <div class="nav__actions">
+        <a href="#" class="btn btn--ghost">Sign In</a>
+        <a href="#" class="btn btn--primary">Get Started</a>
+      </div>
+
+      <button class="nav__toggle" id="navToggle" aria-label="Toggle menu" aria-expanded="false">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <!-- ============ HEADER ============ -->
+    <section class="page-header">
+      <div class="container reveal">
+        <span class="pill">The DevStash Blog</span>
+        <h1>Stash smarter, <span class="gradient-text">ship faster</span></h1>
+        <p class="page-header__sub">
+          Workflows, deep dives, and product updates on organizing the knowledge
+          developers rely on every day.
+        </p>
+      </div>
+    </section>
+
+    <!-- ============ POSTS ============ -->
+    <section class="section" style="padding-top: 16px;">
+      <div class="container">
+
+        <!-- Featured -->
+        <a href="blog-post.html" class="blog-featured reveal" aria-label="Read: Stop re-deriving that Docker command">
+          <div class="blog-featured__media" aria-hidden="true"></div>
+          <div class="blog-featured__body">
+            <span class="post-card__cat" style="--c:var(--c-command)">Featured · Workflows</span>
+            <h3>Stop re-deriving that Docker command for the fifth time</h3>
+            <p>The commands you run once a month are the ones you never remember. Here's a system for stashing them so they're one search away — forever.</p>
+            <div class="post-meta">
+              <span class="avatar" aria-hidden="true">RD</span>
+              <span>Romualdo Dasig</span>
+              <span class="post-meta__dot" aria-hidden="true"></span>
+              <span>Jul 10, 2026</span>
+              <span class="post-meta__dot" aria-hidden="true"></span>
+              <span>6 min read</span>
+            </div>
+          </div>
+        </a>
+
+        <!-- Grid -->
+        <div class="post-grid">
+          <a href="blog-post.html" class="post-card reveal">
+            <div class="post-card__media" style="--c:var(--c-prompt)" aria-hidden="true"></div>
+            <div class="post-card__body">
+              <span class="post-card__cat" style="--c:var(--c-prompt)">AI</span>
+              <h3>A prompt library that actually pays off</h3>
+              <p class="post-card__excerpt">Version the prompts that work, tag them, and pull the right one in seconds instead of scrolling chat history.</p>
+              <div class="post-meta">
+                <span class="avatar" aria-hidden="true">RD</span>
+                <span>Jul 6, 2026</span>
+                <span class="post-meta__dot" aria-hidden="true"></span>
+                <span>5 min read</span>
+              </div>
+            </div>
+          </a>
+
+          <a href="blog-post.html" class="post-card reveal">
+            <div class="post-card__media" style="--c:var(--c-snippet)" aria-hidden="true"></div>
+            <div class="post-card__body">
+              <span class="post-card__cat" style="--c:var(--c-snippet)">Snippets</span>
+              <h3>Organizing snippets with collections</h3>
+              <p class="post-card__excerpt">One snippet can live in React Patterns and Interview Prep at once. Here's how to structure collections that scale.</p>
+              <div class="post-meta">
+                <span class="avatar" aria-hidden="true">RD</span>
+                <span>Jul 2, 2026</span>
+                <span class="post-meta__dot" aria-hidden="true"></span>
+                <span>4 min read</span>
+              </div>
+            </div>
+          </a>
+
+          <a href="blog-post.html" class="post-card reveal">
+            <div class="post-card__media" style="--c:var(--c-url)" aria-hidden="true"></div>
+            <div class="post-card__body">
+              <span class="post-card__cat" style="--c:var(--c-url)">Search</span>
+              <h3>Finding anything with the ⌘K palette</h3>
+              <p class="post-card__excerpt">Search across content, titles, tags, and types. A tour of the command palette and the tricks that make it fast.</p>
+              <div class="post-meta">
+                <span class="avatar" aria-hidden="true">RD</span>
+                <span>Jun 27, 2026</span>
+                <span class="post-meta__dot" aria-hidden="true"></span>
+                <span>3 min read</span>
+              </div>
+            </div>
+          </a>
+
+          <a href="blog-post.html" class="post-card reveal">
+            <div class="post-card__media" style="--c:var(--c-note)" aria-hidden="true"></div>
+            <div class="post-card__body">
+              <span class="post-card__cat" style="--c:var(--c-note)">Product</span>
+              <h3>Markdown notes, done right</h3>
+              <p class="post-card__excerpt">A write/preview editor for notes and prompts, with GFM support and syntax-highlighted code blocks.</p>
+              <div class="post-meta">
+                <span class="avatar" aria-hidden="true">RD</span>
+                <span>Jun 21, 2026</span>
+                <span class="post-meta__dot" aria-hidden="true"></span>
+                <span>4 min read</span>
+              </div>
+            </div>
+          </a>
+
+          <a href="blog-post.html" class="post-card reveal">
+            <div class="post-card__media" style="--c:var(--c-image)" aria-hidden="true"></div>
+            <div class="post-card__body">
+              <span class="post-card__cat" style="--c:var(--c-image)">Pro</span>
+              <h3>Keep files beside the code they belong to</h3>
+              <p class="post-card__excerpt">Upload context files, images, and docs, and stash them right next to the snippets and prompts that use them.</p>
+              <div class="post-meta">
+                <span class="avatar" aria-hidden="true">RD</span>
+                <span>Jun 15, 2026</span>
+                <span class="post-meta__dot" aria-hidden="true"></span>
+                <span>5 min read</span>
+              </div>
+            </div>
+          </a>
+
+          <a href="blog-post.html" class="post-card reveal">
+            <div class="post-card__media" style="--c:var(--c-command)" aria-hidden="true"></div>
+            <div class="post-card__body">
+              <span class="post-card__cat" style="--c:var(--c-command)">Workflows</span>
+              <h3>From bash history to a real command stash</h3>
+              <p class="post-card__excerpt">Your shell history is a graveyard. Promote the commands worth keeping into a searchable, taggable home.</p>
+              <div class="post-meta">
+                <span class="avatar" aria-hidden="true">RD</span>
+                <span>Jun 9, 2026</span>
+                <span class="post-meta__dot" aria-hidden="true"></span>
+                <span>6 min read</span>
+              </div>
+            </div>
+          </a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ============ FOOTER ============ -->
+  <footer class="footer">
+    <div class="container footer__inner">
+      <div class="footer__brand">
+        <a href="index.html" class="brand">
+          <span class="brand__mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7l8-4 8 4-8 4-8-4z"/><path d="M4 12l8 4 8-4"/><path d="M4 17l8 4 8-4"/></svg>
+          </span>
+          <span class="brand__name">DevStash</span>
+        </a>
+        <p class="footer__tag">One home for all your developer knowledge.</p>
+      </div>
+
+      <nav class="footer__cols" aria-label="Footer">
+        <div class="footer__col">
+          <h4>Product</h4>
+          <a href="index.html#features">Features</a>
+          <a href="index.html#pricing">Pricing</a>
+          <a href="#">Changelog</a>
+        </div>
+        <div class="footer__col">
+          <h4>Company</h4>
+          <a href="about.html">About</a>
+          <a href="blog.html">Blog</a>
+          <a href="#">Careers</a>
+        </div>
+        <div class="footer__col">
+          <h4>Resources</h4>
+          <a href="docs.html">Docs</a>
+          <a href="support.html">Support</a>
+          <a href="#">Community</a>
+        </div>
+      </nav>
+    </div>
+    <div class="container footer__bottom">
+      <p>&copy; <span id="year">2026</span> DevStash. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
