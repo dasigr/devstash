@@ -5,6 +5,7 @@ import {
   Terminal,
   FileText,
   Layers,
+  Zap,
   type LucideIcon,
 } from "lucide-react";
 
@@ -190,5 +191,77 @@ export const FOOTER_COLUMNS: {
       { label: "Docs", href: "/docs" },
       { label: "Support", href: "/support" },
     ],
+  },
+];
+
+/** About page stat cards (gradient number + dim label). */
+export const ABOUT_STATS: { num: string; label: string }[] = [
+  { num: "7", label: "Built-in item types" },
+  { num: "1", label: "Search for everything" },
+  { num: "∞", label: "Collections on Pro" },
+  { num: "0", label: "Context switching" },
+];
+
+/** About "What we optimize for" cards — icons included. */
+export const ABOUT_VALUES: MarketingFeature[] = [
+  {
+    title: "Fast",
+    description:
+      "Quick to create, quick to open. A ⌘K palette that jumps to anything without breaking flow.",
+    icon: Zap,
+    accent: "var(--m-snippet)",
+  },
+  {
+    title: "Searchable",
+    description:
+      "Search across content, titles, tags, and types. If you stashed it, you can find it.",
+    icon: Search,
+    accent: "var(--m-command)",
+  },
+  {
+    title: "AI-enhanced",
+    description:
+      "Auto-tags, summaries, code explanations, and a prompt optimizer — right where you work.",
+    icon: Sparkles,
+    accent: "var(--m-prompt)",
+  },
+  {
+    title: "Developer-first",
+    description:
+      "Dark mode by default, syntax highlighting, markdown, and keyboard-driven from end to end.",
+    icon: Code,
+    accent: "var(--m-note)",
+  },
+];
+
+/** About "Who it's for" cards — no icon tile. */
+export const ABOUT_AUDIENCES: {
+  title: string;
+  description: string;
+  accent: string;
+}[] = [
+  {
+    title: "The everyday developer",
+    description:
+      "A fast way to grab snippets, prompts, commands, and links without leaving your flow.",
+    accent: "var(--m-snippet)",
+  },
+  {
+    title: "The AI-first developer",
+    description:
+      "Save prompts, contexts, workflows, and system messages — versioned and searchable.",
+    accent: "var(--m-prompt)",
+  },
+  {
+    title: "The content creator",
+    description:
+      "Store code blocks, explanations, and course notes in one organized, reusable place.",
+    accent: "var(--m-note)",
+  },
+  {
+    title: "The full-stack builder",
+    description:
+      "Collect patterns, boilerplates, and API examples into collections you actually revisit.",
+    accent: "var(--m-url)",
   },
 ];
