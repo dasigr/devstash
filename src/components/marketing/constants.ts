@@ -237,6 +237,10 @@ export const ABOUT_VALUES: MarketingFeature[] = [
 /** Author byline shared across every blog post. */
 export const BLOG_AUTHOR = "Romualdo Dasig";
 
+/** Author bio line shown in the blog detail page's author card. */
+export const BLOG_AUTHOR_BIO =
+  "Building DevStash — one fast, searchable, AI-enhanced hub for developer knowledge.";
+
 /** Derive up-to-two-letter initials from a name ("Romualdo Dasig" → "RD"). */
 export function initials(name: string): string {
   return name
@@ -259,6 +263,8 @@ export interface BlogPost {
   author: string;
   date: string;
   readTime: string;
+  /** Full article body as Markdown (rendered via react-markdown + remark-gfm). */
+  content: string;
   featured?: boolean;
 }
 
@@ -274,6 +280,37 @@ export const BLOG_POSTS: BlogPost[] = [
     author: BLOG_AUTHOR,
     date: "Jul 10, 2026",
     readTime: "6 min read",
+    content: `You know the one. The \`docker\` flag combination you looked up three months ago, got working, and then promptly forgot. Now you're back in the docs, back in Stack Overflow, back in your shell history running \`Ctrl-R\` and hoping past-you typed it recently enough.
+
+The commands you run **once a month** are exactly the ones you never remember — too rare to memorize, too important to lose. That's the gap DevStash's Command type is built for.
+
+## Stash it once
+
+When you finally get a command working, don't just move on. Save it as a Command item with a clear title and a tag or two. Future-you will search for it by intent, not by exact syntax.
+
+\`\`\`
+docker system prune -af --volumes
+docker compose down --remove-orphans
+docker image ls --filter "dangling=true" -q | xargs docker rmi
+\`\`\`
+
+Give it a title like *"Prune Docker system (reclaim disk)"* and tags like \`docker\`, \`cleanup\`. Now it's one ⌘K search away.
+
+> A command you can't find in five seconds is a command you'll re-derive from scratch. The point of stashing is retrieval, not hoarding.
+
+## Tag for how you'll search, not how you filed it
+
+The mistake most people make with snippet managers is organizing by where things came from. Organize by **what you'll be thinking** when you need it again:
+
+- Tag by the problem it solves (\`cleanup\`, \`debug\`, \`deploy\`).
+- Tag by the tool (\`docker\`, \`git\`, \`kubectl\`).
+- Drop it into a collection like *DevOps* so related commands live together.
+
+### Let AI do the tedious part
+
+On Pro, paste the command and let auto-tagging suggest the tags for you — then accept the ones that fit. It's the difference between a stash you keep up and one you abandon after a week.
+
+That's the whole system: capture the moment it works, tag for retrieval, and trust search to do the rest. Do it for a month and you'll never re-derive that Docker command again.`,
     featured: true,
   },
   {
@@ -286,6 +323,27 @@ export const BLOG_POSTS: BlogPost[] = [
     author: BLOG_AUTHOR,
     date: "Jul 6, 2026",
     readTime: "5 min read",
+    content: `Every developer working with AI ends up with the same problem: the prompt that got a great result is buried somewhere in a chat history you'll never scroll back to. You rewrite it from memory, get a worse answer, and start tweaking all over again.
+
+A prompt is a piece of engineering. It deserves the same treatment as a snippet — a home, a name, and a way to find it again.
+
+## Save the ones that work
+
+The moment a prompt produces something you'd reuse, stash it as a Prompt item. Give it a descriptive title (\`Senior code reviewer\`, \`Explain a stack trace\`) so you're searching by *what it does*, not by the first few words you happened to type.
+
+- Tag by task — \`review\`, \`refactor\`, \`docs\`, \`tests\`.
+- Tag by model if the phrasing is model-specific.
+- Group a set into a collection like *AI Workflows*.
+
+## Version, don't overwrite
+
+When you improve a prompt, keep the change deliberate. Small edits compound — a sharper role, a tighter constraint, one good example — and the difference between an okay prompt and a great one is usually a single line.
+
+> The best prompt library isn't the biggest. It's the one where the ten prompts you actually use are one search away.
+
+## Let the optimizer help
+
+On Pro, the prompt optimizer rewrites a rough prompt into a sharper one — clearer role, explicit output format, fewer ways to go wrong. Start from its version, keep what fits, and stash the result.`,
   },
   {
     slug: "organizing-snippets-with-collections",
@@ -297,6 +355,23 @@ export const BLOG_POSTS: BlogPost[] = [
     author: BLOG_AUTHOR,
     date: "Jul 2, 2026",
     readTime: "4 min read",
+    content: `Folders force a choice: a snippet lives in one place, so you file it under *React* and then can't find it three weeks later when you're thinking *Interview Prep*. The thing you saved is real; the single location you filed it under was a guess.
+
+Collections drop the constraint. An item can belong to **as many collections as make sense**, so you organize around how you'll look for something rather than where it came from.
+
+## One snippet, many homes
+
+A well-written \`useDebounce\` hook is a React pattern, an interview talking point, and a performance trick all at once. Put it in all three collections and it surfaces wherever your head is at that moment.
+
+## Structure that scales
+
+- Keep collections **intent-shaped** — *React Patterns*, *Interview Prep*, *DevOps* — not source-shaped.
+- Let items overlap freely; overlap is the feature, not a mess to clean up.
+- Lean on search for the long tail and collections for the handful you revisit constantly.
+
+> Collections are for the things you return to on purpose. Search is for everything else. You need both.
+
+Start with three or four collections you'd actually open. Add items as you go, drop them into whatever fits, and let the structure grow out of real use instead of a taxonomy you designed up front.`,
   },
   {
     slug: "finding-anything-with-the-command-palette",
@@ -308,6 +383,21 @@ export const BLOG_POSTS: BlogPost[] = [
     author: BLOG_AUTHOR,
     date: "Jun 27, 2026",
     readTime: "3 min read",
+    content: `The fastest way to open anything in DevStash isn't a click — it's \`⌘K\`. The command palette is the front door to your whole stash: items, collections, every type, all from the keyboard.
+
+## Search across everything
+
+The palette matches on **content, titles, tags, and types** at once. Half-remember a snippet but know it mentioned \`AbortController\`? Type it. Only recall you tagged something \`deploy\`? That works too. You don't have to know where a thing lives to find it.
+
+## Tricks that make it fast
+
+- Search by **intent** — the words you'd think, not the exact title.
+- Lean on **tags** as a fuzzy filter when the title escapes you.
+- Hit \`⌘K\`, type a few letters, and press Enter — the top result is usually the one you meant.
+
+> If it takes longer to find a snippet than to rewrite it, the tool has failed. The palette exists so retrieval always wins.
+
+Give it a week and the palette becomes muscle memory. You stop *browsing* for things and start *summoning* them.`,
   },
   {
     slug: "markdown-notes-done-right",
@@ -319,6 +409,24 @@ export const BLOG_POSTS: BlogPost[] = [
     author: BLOG_AUTHOR,
     date: "Jun 21, 2026",
     readTime: "4 min read",
+    content: `A note you can't format is a note you won't reread. Walls of plain text hide the one line you needed. DevStash's Note and Prompt types use a real Markdown editor — a **write/preview** surface, so you draft in Markdown and see exactly how it'll render.
+
+## GFM, where it counts
+
+The editor supports GitHub-Flavored Markdown — the parts developers actually use:
+
+- Headings to break a note into sections you can skim.
+- Lists and task lists for steps and checklists.
+- Tables for the small comparisons that don't deserve a spreadsheet.
+- Inline \`code\` and fenced blocks with syntax highlighting.
+
+## Preview before you trust it
+
+Toggle to **Preview** and you're seeing the same render the detail drawer shows later — no surprises, no broken tables discovered a month after you wrote them.
+
+> Formatting isn't decoration. It's the difference between a note you scan in five seconds and one you skip because it's a wall of text.
+
+Write it once, format it so future-you can skim it, and it stays useful long after you've forgotten the details.`,
   },
   {
     slug: "keep-files-beside-the-code",
@@ -330,6 +438,21 @@ export const BLOG_POSTS: BlogPost[] = [
     author: BLOG_AUTHOR,
     date: "Jun 15, 2026",
     readTime: "5 min read",
+    content: `Some knowledge doesn't fit in a text box. A design mockup, an architecture diagram, a sample payload, a PDF spec — they end up in Downloads, a Slack thread, or a folder you'll never open again, drifting away from the code they explain.
+
+On Pro, File and Image items keep them **beside the code they belong to**.
+
+## Context that travels with the code
+
+Upload a context file, an image, or a doc and stash it right next to the snippet or prompt that uses it. When you open the item later, the reference is *there* — not two apps away.
+
+- Attach the sample \`response.json\` next to the parser that consumes it.
+- Keep the schema diagram in the same collection as the queries.
+- Drop the design export beside the component that implements it.
+
+> The best place to store a file is next to the thing it explains. Everywhere else, it's just clutter you'll lose.
+
+Files are a Pro type, and they upload straight into the same searchable, collection-aware home as everything else — so context stops scattering the moment you stash it.`,
   },
   {
     slug: "from-bash-history-to-a-real-command-stash",
@@ -341,6 +464,29 @@ export const BLOG_POSTS: BlogPost[] = [
     author: BLOG_AUTHOR,
     date: "Jun 9, 2026",
     readTime: "6 min read",
+    content: `Your shell history is a graveyard. Ten thousand lines deep, unsearchable in practice, and the good commands are buried under a thousand \`cd\`s and \`ls\`s. \`Ctrl-R\` is archaeology, not retrieval.
+
+The commands worth keeping deserve to be **promoted** — pulled out of history into a searchable, taggable home before they scroll off the end forever.
+
+## Mine your history
+
+Start where the good ones already are:
+
+\`\`\`
+history | awk '{$1=""; print}' | sort | uniq -c | sort -rn | head -40
+\`\`\`
+
+That surfaces your most-run commands. Most are noise — but a few are the exact incantations you'd hate to reconstruct. Those are the keepers.
+
+## Promote, don't hoard
+
+- Save each keeper as a **Command** item with a title that says what it *does*.
+- Tag for retrieval — the tool and the problem, not the syntax.
+- Drop related commands into a collection like *DevOps* or *Git*.
+
+> History remembers everything and surfaces nothing. A stash remembers only what you chose — and hands it back in five seconds.
+
+Do this once and your best commands stop depending on how recently you ran them. They're not in a graveyard anymore; they're in a home you can search.`,
   },
 ];
 
