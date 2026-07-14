@@ -494,6 +494,38 @@ export function getBlogPost(slug: string): BlogPost | undefined {
   return BLOG_POSTS.find((post) => post.slug === slug);
 }
 
+/**
+ * Documentation TOC groups — the single source of truth for both the sidebar
+ * render and the scroll-spy observed section ids, so the two can't drift.
+ */
+export const DOCS_NAV: {
+  heading: string;
+  links: { id: string; label: string }[];
+}[] = [
+  {
+    heading: "Getting Started",
+    links: [
+      { id: "getting-started", label: "Introduction" },
+      { id: "creating-items", label: "Creating items" },
+    ],
+  },
+  {
+    heading: "Concepts",
+    links: [
+      { id: "item-types", label: "Item types" },
+      { id: "collections", label: "Collections" },
+      { id: "search", label: "Search" },
+    ],
+  },
+  {
+    heading: "Power features",
+    links: [
+      { id: "ai", label: "AI features" },
+      { id: "shortcuts", label: "Keyboard shortcuts" },
+    ],
+  },
+];
+
 /** About "Who it's for" cards — no icon tile. */
 export const ABOUT_AUDIENCES: {
   title: string;
