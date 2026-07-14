@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Documentation — DevStash</title>
+  <meta name="description" content="Learn how to use DevStash: item types, collections, search, AI features, and keyboard shortcuts." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- ============ NAV ============ -->
+  <header class="nav" id="nav">
+    <div class="nav__inner container">
+      <a href="index.html" class="brand" aria-label="DevStash home">
+        <span class="brand__mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 7l8-4 8 4-8 4-8-4z" />
+            <path d="M4 12l8 4 8-4" />
+            <path d="M4 17l8 4 8-4" />
+          </svg>
+        </span>
+        <span class="brand__name">DevStash</span>
+      </a>
+
+      <nav class="nav__links" aria-label="Primary">
+        <a href="index.html#features">Features</a>
+        <a href="index.html#pricing">Pricing</a>
+        <a href="about.html">About</a>
+        <a href="blog.html">Blog</a>
+        <a href="docs.html" aria-current="page">Docs</a>
+        <a href="support.html">Support</a>
+      </nav>
+
+      <div class="nav__actions">
+        <a href="#" class="btn btn--ghost">Sign In</a>
+        <a href="#" class="btn btn--primary">Get Started</a>
+      </div>
+
+      <button class="nav__toggle" id="navToggle" aria-label="Toggle menu" aria-expanded="false">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <div class="container">
+      <div class="docs-layout">
+        <!-- ============ SIDEBAR TOC ============ -->
+        <aside class="docs-sidebar" aria-label="Documentation">
+          <div class="docs-nav__group">
+            <h4>Getting Started</h4>
+            <ul>
+              <li><a href="#getting-started">Introduction</a></li>
+              <li><a href="#creating-items">Creating items</a></li>
+            </ul>
+          </div>
+          <div class="docs-nav__group">
+            <h4>Concepts</h4>
+            <ul>
+              <li><a href="#item-types">Item types</a></li>
+              <li><a href="#collections">Collections</a></li>
+              <li><a href="#search">Search</a></li>
+            </ul>
+          </div>
+          <div class="docs-nav__group">
+            <h4>Power features</h4>
+            <ul>
+              <li><a href="#ai">AI features</a></li>
+              <li><a href="#shortcuts">Keyboard shortcuts</a></li>
+            </ul>
+          </div>
+        </aside>
+
+        <!-- ============ CONTENT ============ -->
+        <div class="docs-content">
+          <!-- Getting Started -->
+          <section class="docs-section prose" id="getting-started">
+            <span class="pill">Docs</span>
+            <h2 style="margin-top: 16px;">Getting started</h2>
+            <p>
+              DevStash is one fast, searchable, AI-enhanced hub for all your developer
+              knowledge — snippets, prompts, commands, notes, links, and files.
+              Everything you save is an <strong>Item</strong>, and every item has a
+              <strong>type</strong>.
+            </p>
+            <div class="callout">
+              <span class="callout__mark" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+              </span>
+              <span>New here? Create your first snippet, then hit <code>⌘K</code> to see how fast it is to find again.</span>
+            </div>
+          </section>
+
+          <!-- Creating items -->
+          <section class="docs-section prose" id="creating-items">
+            <h2>Creating items</h2>
+            <p>
+              Click <strong>New Item</strong> in the top bar, pick a type, and fill in
+              the fields. Text types get a title and content; links take a URL; files
+              and images take an upload. Add tags to make them easy to find later.
+            </p>
+            <ul>
+              <li>Snippets and commands open in a syntax-highlighted code editor.</li>
+              <li>Notes and prompts use a markdown write/preview editor.</li>
+              <li>Every item can be pinned, favorited, and added to collections.</li>
+            </ul>
+          </section>
+
+          <!-- Item types -->
+          <section class="docs-section prose" id="item-types">
+            <h2>Item types</h2>
+            <p>DevStash ships with seven built-in system types:</p>
+            <ul>
+              <li><strong>Snippet</strong> — reusable, language-aware code.</li>
+              <li><strong>Prompt</strong> — the AI prompts that work, versioned and tagged.</li>
+              <li><strong>Note</strong> — markdown notes and explanations.</li>
+              <li><strong>Command</strong> — terminal commands you'd otherwise re-derive.</li>
+              <li><strong>Link</strong> — useful URLs, out of your bookmarks bar.</li>
+              <li><strong>File</strong> <em>(Pro)</em> — context files and docs.</li>
+              <li><strong>Image</strong> <em>(Pro)</em> — screenshots and diagrams.</li>
+            </ul>
+            <p>Each type has its own color and icon, used consistently across the app.</p>
+          </section>
+
+          <!-- Collections -->
+          <section class="docs-section prose" id="collections">
+            <h2>Collections</h2>
+            <p>
+              Collections group items of any type. An item can live in
+              <strong>multiple collections</strong> at once — a React snippet could sit
+              in both <em>React Patterns</em> and <em>Interview Prep</em>.
+            </p>
+            <p>
+              Create a collection from the top bar or the sidebar, then add items to it
+              from the item's edit form. A collection card is tinted by the type it
+              holds most.
+            </p>
+          </section>
+
+          <!-- Search -->
+          <section class="docs-section prose" id="search">
+            <h2>Search</h2>
+            <p>
+              Open the command palette with <code>⌘K</code> (or <code>Ctrl K</code>) and
+              search across content, titles, tags, and types. Results are grouped into
+              Items and Collections and ranked by relevance.
+            </p>
+            <pre class="code-block"><code><span class="tok-kw">⌘K</span>  →  type <span class="tok-num">"debounce"</span>  →  jump straight to the snippet</code></pre>
+          </section>
+
+          <!-- AI -->
+          <section class="docs-section prose" id="ai">
+            <h2>AI features <span class="pill pill--pro" style="vertical-align: middle;">Pro</span></h2>
+            <p>On Pro, AI helps with the tedious parts:</p>
+            <ul>
+              <li><strong>Auto-tagging</strong> — suggested tags the moment you paste.</li>
+              <li><strong>Summaries</strong> — a one-line description from your content.</li>
+              <li><strong>Explain this code</strong> — a plain-English walkthrough of any snippet.</li>
+              <li><strong>Prompt optimizer</strong> — sharpen a prompt, then apply the rewrite.</li>
+            </ul>
+            <div class="callout">
+              <span class="callout__mark" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z"/></svg>
+              </span>
+              <span>AI actions run only when you click — nothing is sent automatically.</span>
+            </div>
+          </section>
+
+          <!-- Shortcuts -->
+          <section class="docs-section prose" id="shortcuts">
+            <h2>Keyboard shortcuts</h2>
+            <ul>
+              <li><code>⌘K</code> / <code>Ctrl K</code> — open search.</li>
+              <li><code>Enter</code> — open the selected result.</li>
+              <li><code>Esc</code> — close the palette or drawer.</li>
+            </ul>
+            <p>
+              Need something that isn't covered here? Head to
+              <a href="support.html">Support</a> — the FAQ or the contact form will get
+              you sorted.
+            </p>
+          </section>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- ============ FOOTER ============ -->
+  <footer class="footer">
+    <div class="container footer__inner">
+      <div class="footer__brand">
+        <a href="index.html" class="brand">
+          <span class="brand__mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7l8-4 8 4-8 4-8-4z"/><path d="M4 12l8 4 8-4"/><path d="M4 17l8 4 8-4"/></svg>
+          </span>
+          <span class="brand__name">DevStash</span>
+        </a>
+        <p class="footer__tag">One home for all your developer knowledge.</p>
+      </div>
+
+      <nav class="footer__cols" aria-label="Footer">
+        <div class="footer__col">
+          <h4>Product</h4>
+          <a href="index.html#features">Features</a>
+          <a href="index.html#pricing">Pricing</a>
+          <a href="#">Changelog</a>
+        </div>
+        <div class="footer__col">
+          <h4>Company</h4>
+          <a href="about.html">About</a>
+          <a href="blog.html">Blog</a>
+          <a href="#">Careers</a>
+        </div>
+        <div class="footer__col">
+          <h4>Resources</h4>
+          <a href="docs.html">Docs</a>
+          <a href="support.html">Support</a>
+          <a href="#">Community</a>
+        </div>
+      </nav>
+    </div>
+    <div class="container footer__bottom">
+      <p>&copy; <span id="year">2026</span> DevStash. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

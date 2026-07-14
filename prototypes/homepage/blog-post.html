@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stop re-deriving that Docker command — DevStash Blog</title>
+  <meta name="description" content="The commands you run once a month are the ones you never remember. A system for stashing them so they're one search away." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- ============ NAV ============ -->
+  <header class="nav" id="nav">
+    <div class="nav__inner container">
+      <a href="index.html" class="brand" aria-label="DevStash home">
+        <span class="brand__mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 7l8-4 8 4-8 4-8-4z" />
+            <path d="M4 12l8 4 8-4" />
+            <path d="M4 17l8 4 8-4" />
+          </svg>
+        </span>
+        <span class="brand__name">DevStash</span>
+      </a>
+
+      <nav class="nav__links" aria-label="Primary">
+        <a href="index.html#features">Features</a>
+        <a href="index.html#pricing">Pricing</a>
+        <a href="about.html">About</a>
+        <a href="blog.html" aria-current="page">Blog</a>
+        <a href="docs.html">Docs</a>
+        <a href="support.html">Support</a>
+      </nav>
+
+      <div class="nav__actions">
+        <a href="#" class="btn btn--ghost">Sign In</a>
+        <a href="#" class="btn btn--primary">Get Started</a>
+      </div>
+
+      <button class="nav__toggle" id="navToggle" aria-label="Toggle menu" aria-expanded="false">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <article class="container">
+      <div class="article">
+        <!-- header -->
+        <header class="article__header reveal">
+          <span class="post-card__cat" style="--c:var(--c-command)">Workflows</span>
+          <h1>Stop re-deriving that Docker command for the fifth time</h1>
+          <div class="article__meta">
+            <span class="avatar" aria-hidden="true">RD</span>
+            <span>Romualdo Dasig</span>
+            <span class="post-meta__dot" aria-hidden="true"></span>
+            <span>Jul 10, 2026</span>
+            <span class="post-meta__dot" aria-hidden="true"></span>
+            <span>6 min read</span>
+          </div>
+        </header>
+
+        <div class="article__hero reveal" aria-hidden="true"></div>
+
+        <!-- body -->
+        <div class="prose reveal">
+          <p>
+            You know the one. The <code>docker</code> flag combination you looked up
+            three months ago, got working, and then promptly forgot. Now you're back
+            in the docs, back in Stack Overflow, back in your shell history running
+            <code>Ctrl-R</code> and hoping past-you typed it recently enough.
+          </p>
+          <p>
+            The commands you run <strong>once a month</strong> are exactly the ones you
+            never remember — too rare to memorize, too important to lose. That's the
+            gap DevStash's Command type is built for.
+          </p>
+
+          <h2>Stash it once</h2>
+          <p>
+            When you finally get a command working, don't just move on. Save it as a
+            Command item with a clear title and a tag or two. Future-you will search
+            for it by intent, not by exact syntax.
+          </p>
+          <pre class="code-block"><code><span class="tok-fn">docker</span> system prune -af --volumes
+<span class="tok-fn">docker</span> compose down --remove-orphans
+<span class="tok-fn">docker</span> image ls --filter <span class="tok-num">"dangling=true"</span> -q | xargs docker rmi</code></pre>
+          <p>
+            Give it a title like <em>"Prune Docker system (reclaim disk)"</em> and tags
+            like <code>docker</code>, <code>cleanup</code>. Now it's one ⌘K search away.
+          </p>
+
+          <blockquote>
+            A command you can't find in five seconds is a command you'll re-derive from
+            scratch. The point of stashing is retrieval, not hoarding.
+          </blockquote>
+
+          <h2>Tag for how you'll search, not how you filed it</h2>
+          <p>
+            The mistake most people make with snippet managers is organizing by where
+            things came from. Organize by <strong>what you'll be thinking</strong> when
+            you need it again:
+          </p>
+          <ul>
+            <li>Tag by the problem it solves (<code>cleanup</code>, <code>debug</code>, <code>deploy</code>).</li>
+            <li>Tag by the tool (<code>docker</code>, <code>git</code>, <code>kubectl</code>).</li>
+            <li>Drop it into a collection like <em>DevOps</em> so related commands live together.</li>
+          </ul>
+
+          <h3>Let AI do the tedious part</h3>
+          <p>
+            On Pro, paste the command and let auto-tagging suggest the tags for you —
+            then accept the ones that fit. It's the difference between a stash you keep
+            up and one you abandon after a week.
+          </p>
+
+          <p>
+            That's the whole system: capture the moment it works, tag for retrieval,
+            and trust search to do the rest. Do it for a month and you'll never
+            re-derive that Docker command again.
+          </p>
+        </div>
+
+        <!-- author -->
+        <div class="author-bio reveal">
+          <span class="avatar" aria-hidden="true">RD</span>
+          <div>
+            <h4>Romualdo Dasig</h4>
+            <p>Building DevStash — one fast, searchable, AI-enhanced hub for developer knowledge.</p>
+          </div>
+        </div>
+
+        <!-- related -->
+        <div class="section" style="padding-bottom: 40px;">
+          <div class="section__head reveal" style="margin-bottom: 28px; text-align:left;">
+            <h2 style="font-size: 1.4rem;">Keep reading</h2>
+          </div>
+          <div class="post-grid">
+            <a href="blog-post.html" class="post-card reveal">
+              <div class="post-card__media" style="--c:var(--c-command)" aria-hidden="true"></div>
+              <div class="post-card__body">
+                <span class="post-card__cat" style="--c:var(--c-command)">Workflows</span>
+                <h3>From bash history to a real command stash</h3>
+                <p class="post-card__excerpt">Promote the commands worth keeping into a searchable, taggable home.</p>
+              </div>
+            </a>
+            <a href="blog-post.html" class="post-card reveal">
+              <div class="post-card__media" style="--c:var(--c-prompt)" aria-hidden="true"></div>
+              <div class="post-card__body">
+                <span class="post-card__cat" style="--c:var(--c-prompt)">AI</span>
+                <h3>A prompt library that actually pays off</h3>
+                <p class="post-card__excerpt">Version the prompts that work and pull the right one in seconds.</p>
+              </div>
+            </a>
+            <a href="blog-post.html" class="post-card reveal">
+              <div class="post-card__media" style="--c:var(--c-url)" aria-hidden="true"></div>
+              <div class="post-card__body">
+                <span class="post-card__cat" style="--c:var(--c-url)">Search</span>
+                <h3>Finding anything with the ⌘K palette</h3>
+                <p class="post-card__excerpt">A tour of the command palette and the tricks that make it fast.</p>
+              </div>
+            </a>
+          </div>
+        </div>
+      </div>
+    </article>
+  </main>
+
+  <!-- ============ FOOTER ============ -->
+  <footer class="footer">
+    <div class="container footer__inner">
+      <div class="footer__brand">
+        <a href="index.html" class="brand">
+          <span class="brand__mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7l8-4 8 4-8 4-8-4z"/><path d="M4 12l8 4 8-4"/><path d="M4 17l8 4 8-4"/></svg>
+          </span>
+          <span class="brand__name">DevStash</span>
+        </a>
+        <p class="footer__tag">One home for all your developer knowledge.</p>
+      </div>
+
+      <nav class="footer__cols" aria-label="Footer">
+        <div class="footer__col">
+          <h4>Product</h4>
+          <a href="index.html#features">Features</a>
+          <a href="index.html#pricing">Pricing</a>
+          <a href="#">Changelog</a>
+        </div>
+        <div class="footer__col">
+          <h4>Company</h4>
+          <a href="about.html">About</a>
+          <a href="blog.html">Blog</a>
+          <a href="#">Careers</a>
+        </div>
+        <div class="footer__col">
+          <h4>Resources</h4>
+          <a href="docs.html">Docs</a>
+          <a href="support.html">Support</a>
+          <a href="#">Community</a>
+        </div>
+      </nav>
+    </div>
+    <div class="container footer__bottom">
+      <p>&copy; <span id="year">2026</span> DevStash. All rights reserved.</p>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
