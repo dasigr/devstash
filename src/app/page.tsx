@@ -1,16 +1,14 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
 import { AiSection } from "@/components/marketing/AiSection";
+import { CtaBand } from "@/components/marketing/CtaBand";
 import { FeatureGrid } from "@/components/marketing/FeatureGrid";
 import { Footer } from "@/components/marketing/Footer";
 import { Hero } from "@/components/marketing/Hero";
 import { MarketingNav } from "@/components/marketing/MarketingNav";
-import { marketingButton } from "@/components/marketing/marketing-button";
 import { Pricing } from "@/components/marketing/Pricing";
-import { Reveal } from "@/components/marketing/Reveal";
 
 export const metadata: Metadata = {
   title: "DevStash — Stop Losing Your Developer Knowledge",
@@ -46,22 +44,12 @@ export default async function Home() {
         <AiSection />
         <Pricing />
 
-        {/* CTA band */}
-        <section className="py-24 text-center max-[560px]:py-[66px]">
-          <div className="mx-auto w-full max-w-[1160px] px-6">
-            <Reveal className="mx-auto max-w-[720px] rounded-3xl border border-[var(--m-border-2)] bg-[radial-gradient(120%_120%_at_50%_0%,rgba(99,102,241,0.18),transparent_60%),var(--m-surface)] px-10 py-[60px] max-[560px]:px-6 max-[560px]:py-11">
-              <h2 className="text-[clamp(1.9rem,4.5vw,2.8rem)] font-extrabold tracking-[-0.02em]">
-                Ready to Organize Your Knowledge?
-              </h2>
-              <p className="mx-auto mb-[30px] mt-4 max-w-[480px] text-[1.1rem] text-[var(--m-text-dim)]">
-                Everything you know as a developer, in one fast, searchable home.
-              </p>
-              <Link href="/register" className={marketingButton({ size: "lg" })}>
-                Start stashing — free
-              </Link>
-            </Reveal>
-          </div>
-        </section>
+        <CtaBand
+          title="Ready to Organize Your Knowledge?"
+          subtitle="Everything you know as a developer, in one fast, searchable home."
+          ctaLabel="Start stashing — free"
+          ctaHref="/register"
+        />
       </main>
 
       <Footer />
