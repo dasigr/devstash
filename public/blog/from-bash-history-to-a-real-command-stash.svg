@@ -1,1 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="Placeholder"><rect width="1200" height="630" fill="#06b6d4"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" fill="none">
+<defs>
+
+<linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#eef1f6"></stop><stop offset="1" stop-color="#dfe5ec"></stop></linearGradient>
+<pattern id="grid" width="46" height="46" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.5" fill="#8b949e" opacity="0.06"></circle></pattern>
+<filter id="soft" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="95"></feGaussianBlur></filter>
+<filter id="win" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="30" stdDeviation="45" flood-color="#000" flood-opacity="0.55"></feDropShadow></filter>
+</defs>
+
+
+
+<g filter="url(#win)">
+<rect x="240" y="170" width="1120" height="560" rx="18" fill="#1b2029" stroke="#2b333f" stroke-width="1.5"></rect>
+<line x1="240" y1="226" x2="1360" y2="226" stroke="#242b36" stroke-width="1.5"></line>
+<circle cx="286" cy="198" r="8" fill="#ec6a5e"></circle><circle cx="314" cy="198" r="8" fill="#f4bf50"></circle><circle cx="342" cy="198" r="8" fill="#61c554"></circle>
+</g><text x="300" y="288" font-size="22" fill="#4b535e"># your shell history is a graveyard</text><text x="300" y="326" font-size="22" fill="#4b535e"><tspan>$ </tspan>ls -la</text><text x="300" y="360" font-size="22" fill="#4b535e"><tspan>$ </tspan>cd ~/project &amp;&amp; git pull</text><text x="300" y="394" font-size="22" fill="#565f6b"><tspan>$ </tspan>docker compose up -d --build</text><text x="300" y="428" font-size="22" fill="#4b535e"><tspan>$ </tspan>kubectl rollout restart deploy/api</text><line x1="800" y1="452" x2="800" y2="512" stroke="#f0b429" stroke-width="3"></line><polyline points="784,500 800,518 816,500" stroke="#f0b429" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"></polyline><rect x="380" y="540" width="840" height="140" rx="14" fill="#161c25" stroke="#f0b429" stroke-opacity="0.55" stroke-width="1.5"></rect><rect x="412" y="576" width="60" height="60" rx="12" fill="#f0b429" fill-opacity="0.16"></rect><text x="426" y="620" font-size="26" fill="#f0b429">&gt;_</text><text x="496" y="600" font-size="24" fill="#e6edf3">docker compose up -d --build</text><rect x="496" y="622" width="101" height="34" rx="17" fill="#f0b429" fill-opacity="0.14" stroke="#f0b429" stroke-opacity="0.45"></rect><text x="513" y="645.3" font-size="18" fill="#f0b429">deploy</text><rect x="609" y="622" width="101" height="34" rx="17" fill="#f0b429" fill-opacity="0.14" stroke="#f0b429" stroke-opacity="0.45"></rect><text x="626" y="645.3" font-size="18" fill="#f0b429">docker</text></svg>
