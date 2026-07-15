@@ -17,13 +17,12 @@ export function BlogFeatured({ post }: { post: BlogPost }) {
       style={{ "--c": post.accent } as React.CSSProperties}
       className="group mb-9 grid grid-cols-1 overflow-hidden rounded-[14px] border border-[var(--m-border)] bg-[var(--m-surface)] transition-all duration-200 hover:-translate-y-[3px] hover:border-[var(--m-border-2)] hover:shadow-[0_22px_46px_-26px_rgba(0,0,0,0.7)] lg:grid-cols-[1.1fr_1fr]"
     >
-      <div
+      {/* eslint-disable-next-line @next/next/no-img-element -- plain <img> so cover images (local placeholders or remote Unsplash URLs) work without next/image remote-pattern config. */}
+      <img
+        src={post.image}
+        alt=""
         aria-hidden="true"
-        className="min-h-[180px] lg:min-h-[260px]"
-        style={{
-          background:
-            "radial-gradient(120% 120% at 20% 20%, rgba(99,102,241,0.35), transparent 60%), radial-gradient(120% 120% at 80% 80%, rgba(236,72,153,0.25), transparent 60%), var(--m-surface-2)",
-        }}
+        className="h-full min-h-[180px] w-full object-cover lg:min-h-[260px]"
       />
       <div className="flex flex-col justify-center p-8">
         <span className="self-start text-[0.72rem] font-bold uppercase tracking-[0.05em] text-[var(--c)]">

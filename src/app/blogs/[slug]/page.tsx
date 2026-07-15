@@ -74,7 +74,7 @@ export default async function BlogPostPage({
         </Reveal>
 
         <Reveal className="mt-6">
-          <ArticleHero />
+          <ArticleHero image={post.image} alt={post.title} />
         </Reveal>
 
         <Reveal className="mt-10">

@@ -267,6 +267,12 @@ export interface BlogPost {
   author: string;
   date: string;
   readTime: string;
+  /**
+   * Cover image shown on the listing card / featured card / detail hero.
+   * A local solid-colored SVG placeholder under `/blog/` for now — replace
+   * with a real (e.g. Unsplash) image URL or file per post.
+   */
+  image: string;
   /** Full article body as Markdown (rendered via react-markdown + remark-gfm). */
   content: string;
   featured?: boolean;
@@ -276,6 +282,7 @@ export interface BlogPost {
 export const BLOG_POSTS: BlogPost[] = [
   {
     slug: "stop-re-deriving-that-docker-command",
+    image: "/blog/stop-re-deriving-that-docker-command.svg",
     title: "Stop re-deriving that Docker command for the fifth time",
     excerpt:
       "The commands you run once a month are the ones you never remember. Here's a system for stashing them so they're one search away — forever.",
@@ -319,6 +326,7 @@ That's the whole system: capture the moment it works, tag for retrieval, and tru
   },
   {
     slug: "a-prompt-library-that-actually-pays-off",
+    image: "/blog/a-prompt-library-that-actually-pays-off.svg",
     title: "A prompt library that actually pays off",
     excerpt:
       "Version the prompts that work, tag them, and pull the right one in seconds instead of scrolling chat history.",
@@ -351,6 +359,7 @@ On Pro, the prompt optimizer rewrites a rough prompt into a sharper one — clea
   },
   {
     slug: "organizing-snippets-with-collections",
+    image: "/blog/organizing-snippets-with-collections.svg",
     title: "Organizing snippets with collections",
     excerpt:
       "One snippet can live in React Patterns and Interview Prep at once. Here's how to structure collections that scale.",
@@ -379,6 +388,7 @@ Start with three or four collections you'd actually open. Add items as you go, d
   },
   {
     slug: "finding-anything-with-the-command-palette",
+    image: "/blog/finding-anything-with-the-command-palette.svg",
     title: "Finding anything with the ⌘K palette",
     excerpt:
       "Search across content, titles, tags, and types. A tour of the command palette and the tricks that make it fast.",
@@ -405,6 +415,7 @@ Give it a week and the palette becomes muscle memory. You stop *browsing* for th
   },
   {
     slug: "markdown-notes-done-right",
+    image: "/blog/markdown-notes-done-right.svg",
     title: "Markdown notes, done right",
     excerpt:
       "A write/preview editor for notes and prompts, with GFM support and syntax-highlighted code blocks.",
@@ -434,6 +445,7 @@ Write it once, format it so future-you can skim it, and it stays useful long aft
   },
   {
     slug: "keep-files-beside-the-code",
+    image: "/blog/keep-files-beside-the-code.svg",
     title: "Keep files beside the code they belong to",
     excerpt:
       "Upload context files, images, and docs, and stash them right next to the snippets and prompts that use them.",
@@ -460,6 +472,7 @@ Files are a Pro type, and they upload straight into the same searchable, collect
   },
   {
     slug: "from-bash-history-to-a-real-command-stash",
+    image: "/blog/from-bash-history-to-a-real-command-stash.svg",
     title: "From bash history to a real command stash",
     excerpt:
       "Your shell history is a graveyard. Promote the commands worth keeping into a searchable, taggable home.",

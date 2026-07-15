@@ -15,13 +15,12 @@ export function BlogCard({ post }: { post: BlogPost }) {
       style={{ "--c": post.accent } as React.CSSProperties}
       className="group flex h-full flex-col overflow-hidden rounded-[14px] border border-[var(--m-border)] bg-[var(--m-surface)] transition-all duration-200 hover:-translate-y-1 hover:border-[var(--m-border-2)] hover:shadow-[0_18px_40px_-24px_rgba(0,0,0,0.7)]"
     >
-      <div
+      {/* eslint-disable-next-line @next/next/no-img-element -- plain <img> so cover images (local placeholders or remote Unsplash URLs) work without next/image remote-pattern config. */}
+      <img
+        src={post.image}
+        alt=""
         aria-hidden="true"
-        className="h-[150px]"
-        style={{
-          background:
-            "radial-gradient(120% 120% at 30% 20%, color-mix(in srgb, var(--c) 40%, transparent), transparent 62%), var(--m-surface-2)",
-        }}
+        className="h-[150px] w-full object-cover"
       />
       <div className="flex flex-1 flex-col px-5 pb-[22px] pt-5">
         <span className="mb-2.5 self-start text-[0.72rem] font-bold uppercase tracking-[0.05em] text-[var(--c)]">
