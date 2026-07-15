@@ -1,1 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="Placeholder"><rect width="1200" height="630" fill="#06b6d4"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" fill="none">
+<defs>
+
+<linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#eef1f6"></stop><stop offset="1" stop-color="#dfe5ec"></stop></linearGradient>
+<pattern id="grid" width="46" height="46" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.5" fill="#8b949e" opacity="0.06"></circle></pattern>
+<filter id="soft" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="95"></feGaussianBlur></filter>
+<filter id="win" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="30" stdDeviation="45" flood-color="#000" flood-opacity="0.55"></feDropShadow></filter>
+</defs>
+
+
+
+<g filter="url(#win)">
+<rect x="240" y="170" width="1120" height="560" rx="18" fill="#1b2029" stroke="#2b333f" stroke-width="1.5"></rect>
+<line x1="240" y1="226" x2="1360" y2="226" stroke="#242b36" stroke-width="1.5"></line>
+<circle cx="286" cy="198" r="8" fill="#ec6a5e"></circle><circle cx="314" cy="198" r="8" fill="#f4bf50"></circle><circle cx="342" cy="198" r="8" fill="#61c554"></circle>
+</g><text x="288" y="300" font-size="24" fill="#636e7b"># prune docker system — reclaim disk</text><text x="288" y="356" font-size="27" fill="#c9d1d9"><tspan fill="#58a6ff">$ </tspan>docker system prune -af --volumes</text><text x="288" y="402" font-size="27" fill="#c9d1d9"><tspan fill="#58a6ff">$ </tspan>docker compose down --remove-orphans</text><text x="288" y="448" font-size="27" fill="#c9d1d9"><tspan fill="#58a6ff">$ </tspan>docker image ls --filter dangling=true -q</text><rect x="288" y="512" width="1024" height="150" rx="14" fill="#161c25" stroke="#58a6ff" stroke-opacity="0.55" stroke-width="1.5"></rect><rect x="320" y="548" width="60" height="60" rx="12" fill="#58a6ff" fill-opacity="0.16"></rect><text x="334" y="592" font-size="26" fill="#58a6ff">&gt;_</text><text x="404" y="578" font-size="27" fill="#e6edf3">Prune Docker system</text><rect x="404" y="600" width="101" height="34" rx="17" fill="#58a6ff" fill-opacity="0.14" stroke="#58a6ff" stroke-opacity="0.45"></rect><text x="421" y="623.3" font-size="18" fill="#58a6ff">docker</text><rect x="517" y="600" width="112" height="34" rx="17" fill="#58a6ff" fill-opacity="0.14" stroke="#58a6ff" stroke-opacity="0.45"></rect><text x="534" y="623.3" font-size="18" fill="#58a6ff">cleanup</text><rect x="641" y="600" width="101" height="34" rx="17" fill="#58a6ff" fill-opacity="0.14" stroke="#58a6ff" stroke-opacity="0.45"></rect><text x="658" y="623.3" font-size="18" fill="#58a6ff">devops</text></svg>

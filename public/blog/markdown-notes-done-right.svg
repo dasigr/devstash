@@ -1,1 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="Placeholder"><rect width="1200" height="630" fill="#22c55e"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" fill="none">
+<defs>
+
+<linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#eef1f6"></stop><stop offset="1" stop-color="#dfe5ec"></stop></linearGradient>
+<pattern id="grid" width="46" height="46" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.5" fill="#8b949e" opacity="0.06"></circle></pattern>
+<filter id="soft" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="95"></feGaussianBlur></filter>
+<filter id="win" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="30" stdDeviation="45" flood-color="#000" flood-opacity="0.55"></feDropShadow></filter>
+</defs>
+
+
+
+<g filter="url(#win)">
+<rect x="240" y="170" width="1120" height="560" rx="18" fill="#1b2029" stroke="#2b333f" stroke-width="1.5"></rect>
+<line x1="240" y1="226" x2="1360" y2="226" stroke="#242b36" stroke-width="1.5"></line>
+<circle cx="286" cy="198" r="8" fill="#ec6a5e"></circle><circle cx="314" cy="198" r="8" fill="#f4bf50"></circle><circle cx="342" cy="198" r="8" fill="#61c554"></circle>
+</g><line x1="800" y1="262" x2="800" y2="700" stroke="#242b36" stroke-width="1.5"></line><text x="300" y="312" font-size="26" fill="#c9d1d9"><tspan fill="#38bdf8"># </tspan>Deploy notes</text><text x="300" y="372" font-size="25" fill="#c9d1d9"><tspan fill="#38bdf8">- </tspan>run migrations</text><text x="300" y="414" font-size="25" fill="#c9d1d9"><tspan fill="#38bdf8">- </tspan>flush the cache</text><text x="300" y="486" font-size="24" fill="#8b949e"><tspan fill="#38bdf8">`</tspan>npm run deploy<tspan fill="#38bdf8">`</tspan></text><rect x="840" y="288" width="300" height="30" rx="7" fill="#e6edf3" opacity="0.92"></rect><circle cx="852" cy="368" r="6" fill="#38bdf8"></circle><rect x="872" y="358" width="360" height="20" rx="10" fill="#3a434f"></rect><circle cx="852" cy="410" r="6" fill="#38bdf8"></circle><rect x="872" y="400" width="300" height="20" rx="10" fill="#3a434f"></rect><rect x="840" y="456" width="392" height="70" rx="12" fill="#0f141b" stroke="#242b36" stroke-width="1.5"></rect><text x="866" y="498" font-size="23" fill="#38bdf8">npm run deploy</text></svg>
